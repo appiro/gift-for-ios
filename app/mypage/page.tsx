@@ -603,34 +603,37 @@ export default function MyPage() {
       </motion.div>
 
       {/* ─── Tabs ─── */}
-      <div className="flex items-end border-b border-border-light mt-3 px-1 flex-shrink-0">
-        {/* 左詰めタブ */}
-        <div className="flex gap-6">
-          {(["published", "private", "draft", "trash"] as const).map((tab) => {
-            const label = tab === "published" ? "公開中" : tab === "private" ? "非公開" : tab === "draft" ? "下書き" : "ごみ箱";
-            const count = reviews.filter((r) => r.status === tab).length;
-            return (
-              <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`relative pb-4 text-sm font-bold transition-colors flex items-center gap-1.5 ${activeTab === tab ? "text-text-main" : "text-text-sub hover:text-primary"}`}>
-                {label}
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                  activeTab === tab ? "bg-primary/15 text-primary" : "bg-background-soft text-text-sub"
-                }`}>{count}</span>
-                {activeTab === tab && <motion.div layoutId="myPageTabUnderline" className="absolute bottom-0 left-0 w-full h-1 bg-secondary rounded-t-full" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />}
-              </button>
-            );
-          })}
-        </div>
+      <div className="border-b border-border-light mt-3 flex-shrink-0">
+        <div className="flex items-end">
+          {/* スクロール可能なタブ */}
+          <div className="flex gap-1 sm:gap-5 overflow-x-auto flex-1 px-1 hide-scrollbar">
+            {(["published", "private", "draft", "trash"] as const).map((tab) => {
+              const label = tab === "published" ? "公開中" : tab === "private" ? "非公開" : tab === "draft" ? "下書き" : "ごみ箱";
+              const count = reviews.filter((r) => r.status === tab).length;
+              return (
+                <button key={tab} onClick={() => setActiveTab(tab)}
+                  className={`relative pb-3 px-2 sm:px-0 text-xs sm:text-sm font-bold transition-colors flex items-center gap-1 flex-shrink-0 ${activeTab === tab ? "text-text-main" : "text-text-sub hover:text-primary"}`}>
+                  {label}
+                  <span className={`text-[10px] px-1 sm:px-1.5 py-0.5 rounded-full font-bold ${
+                    activeTab === tab ? "bg-primary/15 text-primary" : "bg-background-soft text-text-sub"
+                  }`}>{count}</span>
+                  {activeTab === tab && <motion.div layoutId="myPageTabUnderline" className="absolute bottom-0 left-0 w-full h-1 bg-secondary rounded-t-full" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />}
+                </button>
+              );
+            })}
+          </div>
 
-        {/* 右詰め：公開情報を編集ボタン */}
-        <div className="ml-auto pb-3">
-          <button
-            onClick={openEditModal}
-            className="flex items-center gap-1.5 bg-white border border-border-light text-text-main px-4 py-1.5 rounded-full text-xs font-bold shadow-sm hover:border-primary hover:text-primary transition-all"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            公開情報を編集
-          </button>
+          {/* 右詰め：公開情報を編集ボタン */}
+          <div className="pb-3 pl-2 flex-shrink-0">
+            <button
+              onClick={openEditModal}
+              className="flex items-center gap-1 bg-white border border-border-light text-text-main px-2.5 sm:px-4 py-1.5 rounded-full text-xs font-bold shadow-sm hover:border-primary hover:text-primary transition-all"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              <span className="hidden sm:inline">公開情報を編集</span>
+              <span className="sm:hidden">編集</span>
+            </button>
+          </div>
         </div>
       </div>
 

@@ -281,13 +281,20 @@ export default function PostDetail({
               {/* Author */}
               <div>
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-border-light overflow-hidden">
+                  <Link href={`/user/${review.authorId}`} className="w-10 h-10 rounded-full bg-border-light overflow-hidden hover:opacity-80 transition-opacity flex-shrink-0">
                     <img src={review.authorIcon} alt={review.authorName} className="w-full h-full object-contain p-1" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-text-main">{review.authorName}</p>
+                  </Link>
+                  <div className="flex-1 min-w-0">
+                    <Link href={`/user/${review.authorId}`} className="text-sm font-bold text-text-main hover:text-primary transition-colors">{review.authorName}</Link>
                     <p className="text-xs text-text-sub">{new Date(review.createdAt).toLocaleDateString('ja-JP')}</p>
                   </div>
+                  {currentUserId === review.authorId && (
+                    <Link href={`/post/${review.id}/edit`}
+                      className="flex-shrink-0 flex items-center gap-1.5 text-xs font-bold text-text-sub border border-border-light px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      編集
+                    </Link>
+                  )}
                 </div>
 
                 <h1 className="text-2xl font-bold text-text-main leading-tight mb-4">{review.title}</h1>
@@ -312,25 +319,25 @@ export default function PostDetail({
                 <p className="text-sm text-text-main leading-relaxed whitespace-pre-wrap relative z-10">{review.episode}</p>
               </div>
 
-              {/* Product Card */}
-              <div className="border border-border-light rounded-2xl p-4 flex gap-4 bg-white hover:border-primary/50 transition-colors">
-                <div className="w-20 h-20 bg-background-soft rounded-xl flex-shrink-0">
-                  <img src={review.imageUrl} alt={review.productName} className="w-full h-full object-cover rounded-xl" />
-                </div>
-                <div className="flex-1 flex flex-col justify-center">
-                  <span className="text-xs font-bold text-primary mb-1">公式ショップ・ECサイト</span>
-                  <h3 className="text-sm font-bold text-text-main mb-1 line-clamp-1">{review.productName}</h3>
+              {/* Product Card - only show if any shop link exists */}
+              {(review.amazonUrl || review.rakutenUrl || review.productUrl) && (
+                <div className="border border-border-light rounded-2xl p-4 bg-white">
+                  <span className="text-xs font-bold text-primary block mb-3">ネットショップ</span>
+                  <h3 className="text-sm font-bold text-text-main mb-3 line-clamp-1">{review.productName}</h3>
                   {review.referencePrice && <p className="text-xs text-text-sub mb-3">参考価格: {review.referencePrice}</p>}
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {review.productUrl && (
+                      <a href={review.productUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[120px] py-1.5 bg-primary text-white rounded-lg text-xs font-bold text-center hover:opacity-90">ショップで見る</a>
+                    )}
                     {review.amazonUrl && (
-                      <a href={review.amazonUrl} target="_blank" rel="noopener noreferrer" className="flex-1 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-bold text-center hover:opacity-90">Amazonで見る</a>
+                      <a href={review.amazonUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[120px] py-1.5 bg-orange-500 text-white rounded-lg text-xs font-bold text-center hover:opacity-90">Amazonで見る</a>
                     )}
                     {review.rakutenUrl && (
-                      <a href={review.rakutenUrl} target="_blank" rel="noopener noreferrer" className="flex-1 py-1.5 bg-red-500 text-white rounded-lg text-xs font-bold text-center hover:opacity-90">楽天で見る</a>
+                      <a href={review.rakutenUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[120px] py-1.5 bg-red-500 text-white rounded-lg text-xs font-bold text-center hover:opacity-90">楽天で見る</a>
                     )}
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Comment Section */}
               <div className="pt-6 border-t border-border-light">

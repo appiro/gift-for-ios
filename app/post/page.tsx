@@ -15,11 +15,11 @@ export default function PostPage() {
   const [reviewType, setReviewType] = useState<'gave' | 'received'>('gave');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageSize, setImageSize] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<(File | null)[]>([null, null]);
+  const [imagePreviews, setImagePreviews] = useState<(string | null)[]>([null, null]);
   const [compressing, setCompressing] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+  const [priceUnknown, setPriceUnknown] = useState(false);
 
   const [formData, setFormData] = useState({
     gender: '',
@@ -28,6 +28,7 @@ export default function PostPage() {
     productName: '',
     productTags: [] as string[],   // productsテーブル由来のタグ（商品タグ）
     priceCategory: '',
+    productUrl: '',
     relationship: [] as string[],
     scene: [] as string[],
     category: [] as string[],
@@ -93,33 +94,25 @@ export default function PostPage() {
     });
   };
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setCompressing(true);
-    setImagePreview(null);
-    setImageSize(null);
-
     const compressed = await compressImage(file);
-    const kb = (compressed.size / 1024).toFixed(0);
-    const originalKb = (file.size / 1024).toFixed(0);
-
-    setImageFile(compressed);
-    setImagePreview(URL.createObjectURL(compressed));
-    setImageSize(
-      compressed.size < file.size
-        ? `${kb}KB（元: ${originalKb}KB から圧縮）`
-        : `${kb}KB`
-    );
+    setImageFiles(prev => { const n = [...prev]; n[index] = compressed; return n; });
+    setImagePreviews(prev => { const n = [...prev]; n[index] = URL.createObjectURL(compressed); return n; });
     setCompressing(false);
-    // Reset input so the same file can be re-selected
     e.target.value = '';
   };
 
+  const removeImage = (index: number) => {
+    setImageFiles(prev => { const n = [...prev]; n[index] = null; return n; });
+    setImagePreviews(prev => { const n = [...prev]; n[index] = null; return n; });
+  };
+
   const handleSubmit = async () => {
-    if (!formData.productName || !formData.priceCategory || !formData.episode) return;
-    if (!imageFile && !imagePreview) {
+    if (!formData.productName || (!priceUnknown && !formData.priceCategory) || !formData.episode) return;
+    if (!imagePreviews[0]) {
       setError('メインビジュアルをアップロードしてください');
       return;
     }
@@ -128,23 +121,21 @@ export default function PostPage() {
     setError(null);
 
     try {
-      let imageUrl = '';
-
-      // Upload image to Supabase Storage
-      if (imageFile) {
-        const ext = imageFile.name.split('.').pop();
-        const fileName = `${Date.now()}.${ext}`;
+      // Upload images
+      const uploadedUrls: string[] = [];
+      for (let i = 0; i < 2; i++) {
+        const file = imageFiles[i];
+        if (!file) continue;
+        const ext = file.name.split('.').pop();
+        const fileName = `${Date.now()}_${i}.${ext}`;
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('review-images')
-          .upload(fileName, imageFile, { upsert: false });
-
+          .upload(fileName, file, { upsert: false });
         if (uploadError) throw new Error(`画像のアップロードに失敗しました: ${uploadError.message}`);
-
         const { data: { publicUrl } } = supabase.storage
           .from('review-images')
           .getPublicUrl(uploadData.path);
-
-        imageUrl = publicUrl;
+        uploadedUrls.push(publicUrl);
       }
 
       const res = await fetch('/api/reviews', {
@@ -156,9 +147,10 @@ export default function PostPage() {
             : `${formData.relationship[0] ?? formData.gender}へのギフト`,
           productName: formData.productName,
           productId: formData.productId || null,
-          price: `〜${Number(formData.priceCategory).toLocaleString()}円`,
-          imageUrl,
-          images: imageUrl ? [imageUrl] : [],
+          productUrl: formData.productUrl || null,
+          price: priceUnknown ? '不明' : `〜${Number(formData.priceCategory).toLocaleString()}円`,
+          imageUrl: uploadedUrls[0] ?? '',
+          images: uploadedUrls,
           episode: formData.episode,
           gender: formData.gender,
           ageGroup: formData.ageGroup,
@@ -183,7 +175,7 @@ export default function PostPage() {
   };
 
   const isStep1Valid = formData.gender && formData.ageGroup;
-  const isStep2Valid = !!(formData.episode && formData.priceCategory && formData.productName);
+  const isStep2Valid = !!(formData.episode && (priceUnknown || formData.priceCategory) && formData.productName);
 
   return (
     <div className="max-w-2xl mx-auto w-full">
@@ -321,53 +313,45 @@ export default function PostPage() {
             <div className="grid md:grid-cols-2 gap-8">
               {/* Photo Upload */}
               <div>
-                <label className="block text-sm font-bold text-text-main mb-2">メインビジュアル <span className="text-accent-strong text-xs">*</span></label>
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="aspect-square bg-background-soft border-2 border-dashed border-border-light rounded-2xl flex flex-col items-center justify-center text-text-sub hover:bg-white hover:border-primary cursor-pointer transition-colors group overflow-hidden relative"
-                >
-                  {compressing ? (
-                    <div className="flex flex-col items-center gap-3">
-                      <svg className="animate-spin w-10 h-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                      </svg>
-                    </div>
-                  ) : imagePreview ? (
-                    <img src={imagePreview} alt="preview" className="w-full h-full object-cover" />
-                  ) : (
-                    <>
-                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" className="text-primary" viewBox="0 0 16 16">
-                          <path d="M10.5 8.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/>
-                          <path d="M2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 3.172 4zm.5 2a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1m9 2.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0"/>
-                        </svg>
+                <label className="block text-sm font-bold text-text-main mb-2">
+                  写真 <span className="text-accent-strong text-xs">*</span>
+                  <span className="text-xs font-normal text-text-sub ml-2">（最大2枚・1枚目必須）</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[0, 1].map((index) => (
+                    <div key={index}>
+                      <div
+                        onClick={() => fileInputRefs[index].current?.click()}
+                        className="aspect-square bg-background-soft border-2 border-dashed border-border-light rounded-2xl flex flex-col items-center justify-center text-text-sub hover:bg-white hover:border-primary cursor-pointer transition-colors group overflow-hidden relative"
+                      >
+                        {compressing && !imagePreviews[index] ? (
+                          <svg className="animate-spin w-8 h-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                          </svg>
+                        ) : imagePreviews[index] ? (
+                          <img src={imagePreviews[index]!} alt="preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="flex flex-col items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="text-border-light group-hover:text-primary transition-colors" viewBox="0 0 16 16">
+                              <path d="M10.5 8.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/>
+                              <path d="M2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 3.172 4zm.5 2a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1m9 2.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0"/>
+                            </svg>
+                            <span className="text-xs text-text-sub">{index === 0 ? '必須' : '任意'}</span>
+                          </div>
+                        )}
                       </div>
-                      <span className="font-bold text-sm">写真をアップロード</span>
-                      <span className="text-xs mt-1">またはクリックして選択</span>
-                    </>
-                  )}
+                      <input ref={fileInputRefs[index]} type="file" accept="image/*"
+                        onChange={(e) => handleImageChange(e, index)} className="hidden" />
+                      {imagePreviews[index] && (
+                        <button onClick={() => removeImage(index)}
+                          className="mt-1 w-full text-xs text-text-sub hover:text-red-500 transition-colors text-center">
+                          削除
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-                {imagePreview && !compressing && (
-                  <div className="mt-2 flex items-center justify-between">
-                    {imageSize && (
-                      <span className="text-xs text-text-sub">{imageSize}</span>
-                    )}
-                    <button
-                      onClick={() => { setImageFile(null); setImagePreview(null); setImageSize(null); }}
-                      className="text-xs text-text-sub hover:text-red-500 transition-colors ml-auto"
-                    >
-                      削除
-                    </button>
-                  </div>
-                )}
               </div>
 
               {/* Detail fields */}
@@ -460,17 +444,42 @@ export default function PostPage() {
 
                 <div>
                   <label className="block text-sm font-bold text-text-main mb-2">予算（約） <span className="text-accent-strong text-xs">*</span></label>
-                  <div className="relative max-w-[200px]">
+                  {!priceUnknown && (
+                    <div className="relative max-w-[200px]">
+                      <input
+                        type="number"
+                        step="100"
+                        placeholder="5000"
+                        value={formData.priceCategory}
+                        onChange={(e) => updateData('priceCategory', e.target.value)}
+                        className="w-full bg-background-soft border border-border-light rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-primary focus:bg-white transition-colors"
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-main font-bold text-sm">円</span>
+                    </div>
+                  )}
+                  <label className="flex items-center gap-2 mt-2 cursor-pointer select-none">
                     <input
-                      type="number"
-                      step="100"
-                      placeholder="5000"
-                      value={formData.priceCategory}
-                      onChange={(e) => updateData('priceCategory', e.target.value)}
-                      className="w-full bg-background-soft border border-border-light rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-primary focus:bg-white transition-colors"
+                      type="checkbox"
+                      checked={priceUnknown}
+                      onChange={(e) => {
+                        setPriceUnknown(e.target.checked);
+                        if (e.target.checked) updateData('priceCategory', '');
+                      }}
+                      className="rounded"
                     />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-main font-bold text-sm">円</span>
-                  </div>
+                    <span className="text-xs text-text-sub">値段がわからない</span>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-text-main mb-2">ネットショップURL <span className="text-xs font-normal text-text-sub ml-1">（任意）</span></label>
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={formData.productUrl}
+                    onChange={(e) => updateData('productUrl', e.target.value)}
+                    className="w-full bg-background-soft border border-border-light rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary focus:bg-white transition-colors"
+                  />
                 </div>
               </div>
             </div>

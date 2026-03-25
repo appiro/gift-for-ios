@@ -15,6 +15,7 @@ export default function Header() {
   const [currentTheme, setCurrentTheme] = useState('default');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -173,16 +174,42 @@ export default function Header() {
 
           {/* Desktop login/logout */}
           {isLoggedIn ? (
-            <button
-              onClick={async () => {
-                await supabase.auth.signOut();
-                router.push('/');
-                router.refresh();
-              }}
-              className="hidden md:block px-5 py-2 bg-white border border-border-light rounded-full text-text-main font-bold hover:border-red-300 hover:text-red-500 shadow-sm hover:shadow transition-all"
-            >
-              ログアウト
-            </button>
+            <>
+              <button
+                onClick={() => setShowLogoutConfirm(true)}
+                className="hidden md:block px-5 py-2 bg-white border border-border-light rounded-full text-text-main font-bold hover:border-red-300 hover:text-red-500 shadow-sm hover:shadow transition-all"
+              >
+                ログアウト
+              </button>
+              {showLogoutConfirm && (
+                <>
+                  <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[200]" onClick={() => setShowLogoutConfirm(false)} />
+                  <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[210] bg-white rounded-2xl shadow-2xl border border-border-light p-6 w-[90vw] max-w-sm">
+                    <p className="text-base font-bold text-text-main mb-1">ログアウトしますか？</p>
+                    <p className="text-sm text-text-sub mb-5">ログインページに移動します。</p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setShowLogoutConfirm(false)}
+                        className="flex-1 py-2.5 border border-border-light rounded-xl text-sm font-bold text-text-sub hover:bg-background-soft transition-colors"
+                      >
+                        キャンセル
+                      </button>
+                      <button
+                        onClick={async () => {
+                          setShowLogoutConfirm(false);
+                          await supabase.auth.signOut();
+                          router.push('/');
+                          router.refresh();
+                        }}
+                        className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 transition-colors"
+                      >
+                        ログアウト
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </>
           ) : (
             <Link href="/login" className="hidden md:block px-5 py-2 bg-white border border-border-light rounded-full text-text-main font-bold hover:border-primary hover:text-primary shadow-sm hover:shadow transition-all">
               ログイン

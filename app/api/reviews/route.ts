@@ -124,6 +124,7 @@ export async function POST(request: NextRequest) {
       author_name: profile?.display_name ?? user.email?.split('@')[0] ?? 'ゲスト',
       author_icon: profile?.icon_url ?? '/icons/cat.png',
       product_id: body.productId ?? null,
+      product_url: body.productUrl ?? null,
       status: 'published',
     })
     .select()

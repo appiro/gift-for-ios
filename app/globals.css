@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+.hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+
 @variant landscape {
   @media (orientation: landscape) {
     @slot;

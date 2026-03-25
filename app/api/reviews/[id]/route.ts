@@ -48,3 +48,58 @@ export async function GET(
 
   return Response.json(toReview(data as Record<string, unknown>));
 }
+
+export async function PATCH(
+  req: NextRequest,
+  ctx: RouteContext<'/api/reviews/[id]'>
+) {
+  const { id } = await ctx.params;
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // Verify ownership
+  const { data: existing } = await supabase
+    .from('reviews')
+    .select('user_id')
+    .eq('id', id)
+    .single();
+  if (!existing || existing.user_id !== user.id) {
+    return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  const updates: Record<string, unknown> = {};
+  if (body.productName !== undefined) updates.product_name = body.productName;
+  if (body.price !== undefined) updates.price = body.price;
+  if (body.episode !== undefined) updates.episode = body.episode;
+  if (body.relationship !== undefined) updates.relationship = body.relationship;
+  if (body.scene !== undefined) updates.scene = body.scene;
+  if (body.category !== undefined) updates.category = body.category;
+  if (body.productUrl !== undefined) updates.product_url = body.productUrl;
+  if (body.images !== undefined) updates.images = body.images;
+  if (body.imageUrl !== undefined) updates.image_url = body.imageUrl;
+  if (body.priceCategory !== undefined) {
+    updates.price = body.priceCategory
+      ? `〜${Number(body.priceCategory).toLocaleString()}円`
+      : '不明';
+  }
+
+  const { data, error } = await supabase
+    .from('reviews')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+
+  return Response.json(toReview(data as Record<string, unknown>));
+}
