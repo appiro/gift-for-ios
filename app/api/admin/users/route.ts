@@ -1,11 +1,11 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/adminAuth';
 import type { NextRequest } from 'next/server';
 
 export async function GET() {
   if (!await requireAdmin()) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data: profiles } = await supabase
     .from('profiles')
     .select('id, display_name, icon_url, role, banned_at, created_at')
@@ -13,7 +13,6 @@ export async function GET() {
 
   if (!profiles) return Response.json([]);
 
-  // Get review counts per user
   const { data: reviewCounts } = await supabase
     .from('reviews')
     .select('user_id')
@@ -38,7 +37,7 @@ export async function GET() {
 export async function PATCH(req: NextRequest) {
   if (!await requireAdmin()) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const body = await req.json() as { id: string; action: 'ban' | 'unban' | 'setAdmin' | 'removeAdmin' };
   const { id, action } = body;
 

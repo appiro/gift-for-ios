@@ -1,11 +1,11 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/adminAuth';
 import type { NextRequest } from 'next/server';
 
 export async function GET(req: NextRequest) {
   if (!await requireAdmin()) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { searchParams } = req.nextUrl;
   const page = parseInt(searchParams.get('page') ?? '1');
   const limit = 30;
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   const { data, count } = await supabase
     .from('reviews')
-    .select('id, title, product_name, image_url, author_name, author_id:user_id, status, created_at, want_count, gift_count', { count: 'exact' })
+    .select('id, title, product_name, image_url, author_name, user_id, status, created_at, want_count, gift_count', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, from + limit - 1);
 
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   if (!await requireAdmin()) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { id } = await req.json() as { id: string };
 
   const { error } = await supabase.from('reviews').delete().eq('id', id);

@@ -1,11 +1,11 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/adminAuth';
 import type { NextRequest } from 'next/server';
 
 export async function GET() {
   if (!await requireAdmin()) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from('announcements')
     .select('*')
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   const admin = await requireAdmin();
   if (!admin) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const body = await req.json() as { title: string; body: string; type?: string };
 
   const { data, error } = await supabase
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   if (!await requireAdmin()) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { id } = await req.json() as { id: string };
 
   const { error } = await supabase.from('announcements').delete().eq('id', id);
