@@ -52,11 +52,11 @@ export default function ReviewCard({
           <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-primary text-white shadow-sm border border-primary/20 whitespace-nowrap flex-shrink-0 tracking-wide">
             {price}
           </span>
-          <span className="text-xs text-text-sub line-clamp-1">{productName}</span>
+          <span className="text-[10px] text-text-sub line-clamp-1">{title}</span>
         </div>
         <Link href={`/post/${id}?img=${encodeURIComponent(imageUrl)}`}>
           <h3 className="text-sm font-bold text-text-main line-clamp-2 leading-snug hover:text-primary transition-colors">
-            {title}
+            {productName}
           </h3>
         </Link>
 

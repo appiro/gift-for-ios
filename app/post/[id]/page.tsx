@@ -297,7 +297,8 @@ export default function PostDetail({
                   )}
                 </div>
 
-                <h1 className="text-2xl font-bold text-text-main leading-tight mb-4">{review.title}</h1>
+                <p className="text-xs text-text-sub mb-1">{review.title}</p>
+                <h1 className="text-2xl font-bold text-text-main leading-tight mb-4">{review.productName}</h1>
 
                 <div className="flex flex-wrap gap-2">
                   <span className="px-3 py-1 bg-background-soft border border-border-light rounded-full text-xs text-text-sub">{review.price}</span>
