@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import MobileNav from "@/components/MobileNav";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { SearchProvider } from "@/components/SearchProvider";
@@ -29,9 +30,16 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false },
   openGraph: {
     type: "website",
+    url: "https://giftfor.info",
     title: "Gift for",
     description: "実体験に基づいた「成功したギフト体験」を可視化・共有するサービス",
-    images: [{ url: "/icons/icon-512.png" }],
+    images: [{ url: "https://giftfor.info/icons/icon-512.png" }],
+  },
+  twitter: {
+    card: "summary",
+    title: "Gift for",
+    description: "実体験に基づいた「成功したギフト体験」を可視化・共有するサービス",
+    images: ["https://giftfor.info/icons/icon-512.png"],
   },
   other: {
     "mobile-web-app-capable": "yes",
@@ -69,6 +77,7 @@ export default function RootLayout({
           <main className="flex flex-col flex-1 w-full mx-auto px-3 sm:px-6 mt-2 sm:mt-4 max-w-[1400px] pb-24 md:pb-6">
             {children}
           </main>
+          <Footer />
           <MobileNav />
           <ServiceWorkerRegister />
         </SearchProvider>
