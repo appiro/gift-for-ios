@@ -187,6 +187,7 @@ export default function PostPage() {
   const isStep2Valid = !!(formData.episode && (priceUnknown || formData.priceCategory) && formData.productName);
 
   return (
+    <>
     <div className="max-w-2xl mx-auto w-full">
       <div className="bg-background-card border border-border-light rounded-2xl shadow-sm p-4 sm:p-8 mt-2 sm:mt-4">
 
@@ -637,5 +638,6 @@ export default function PostPage() {
         onCancel={() => setEditingFile(null)}
       />
     )}
+    </>
   );
 }
