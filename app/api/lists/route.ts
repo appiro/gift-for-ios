@@ -1,10 +1,12 @@
 import { createClient } from '@/lib/supabase/server';
 import type { NextRequest } from 'next/server';
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   const supabase = await createClient();
+  const { searchParams } = req.nextUrl;
+  const userId = searchParams.get('userId');
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('lists')
     .select(`
       id,
@@ -26,8 +28,15 @@ export async function GET(_req: NextRequest) {
         comment
       )
     `)
-    .eq('status', 'published')
     .order('created_at', { ascending: false });
+
+  if (userId) {
+    query = query.eq('user_id', userId);
+  } else {
+    query = query.eq('status', 'published');
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });

@@ -9,8 +9,10 @@ import { createClient } from "@/lib/supabase/client";
 
 // ───────── Types ─────────
 type ReviewStatus = "published" | "private" | "draft" | "trash";
+type MainTab = ReviewStatus | "lists";
 
 type UserReview = { id: string; imageUrl: string; title: string; productName: string; price: string; likes: number; episode: string; status: ReviewStatus };
+type UserList = { id: string; title: string; coverUrl: string | null; status: string; reviewCount: number };
 
 const mockReviews: UserReview[] = [];
 
@@ -51,7 +53,9 @@ export default function MyPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  const [activeTab, setActiveTab] = useState<ReviewStatus>("published");
+  const [activeTab, setActiveTab] = useState<MainTab>("published");
+  const [userLists, setUserLists] = useState<UserList[]>([]);
+  const [loadingLists, setLoadingLists] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showIconModal, setShowIconModal] = useState(false);
   const [pendingIcon, setPendingIcon] = useState<string | null>(null);
@@ -181,6 +185,23 @@ export default function MyPage() {
           }
         })
         .finally(() => setLoadingReviews(false));
+
+      // Load user's lists
+      setLoadingLists(true);
+      fetch(`/api/lists?userId=${user.id}`)
+        .then((r) => r.ok ? r.json() : [])
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setUserLists(data.map((list: { id: string; title: string; status: string; list_items?: { snapshot_image_url?: string }[] }) => ({
+              id: list.id,
+              title: list.title,
+              status: list.status,
+              coverUrl: list.list_items?.[0]?.snapshot_image_url ?? null,
+              reviewCount: list.list_items?.length ?? 0,
+            })));
+          }
+        })
+        .finally(() => setLoadingLists(false));
     });
 
     // Load localStorage settings
@@ -607,9 +628,9 @@ export default function MyPage() {
         <div className="flex items-end">
           {/* スクロール可能なタブ */}
           <div className="flex gap-1 sm:gap-5 overflow-x-auto flex-1 px-1 hide-scrollbar">
-            {(["published", "private", "draft", "trash"] as const).map((tab) => {
-              const label = tab === "published" ? "公開中" : tab === "private" ? "非公開" : tab === "draft" ? "下書き" : "ごみ箱";
-              const count = reviews.filter((r) => r.status === tab).length;
+            {(["published", "private", "draft", "trash", "lists"] as const).map((tab) => {
+              const label = tab === "published" ? "公開中" : tab === "private" ? "非公開" : tab === "draft" ? "下書き" : tab === "trash" ? "ごみ箱" : "まとめ";
+              const count = tab === "lists" ? userLists.length : reviews.filter((r) => r.status === tab).length;
               return (
                 <button key={tab} onClick={() => setActiveTab(tab)}
                   className={`relative pb-3 px-2 sm:px-0 text-xs sm:text-sm font-bold transition-colors flex items-center gap-1 flex-shrink-0 ${activeTab === tab ? "text-text-main" : "text-text-sub hover:text-primary"}`}>
@@ -811,7 +832,43 @@ export default function MyPage() {
       <div className="flex-1 overflow-y-auto mt-4 pb-4">
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div key={activeTab} initial={{ opacity: 0, y: 20, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.98 }} transition={{ duration: 0.5, type: "spring", bounce: 0.3 }} className="w-full">
-            {(() => {
+            {activeTab === "lists" ? (
+              loadingLists ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {[...Array(4)].map((_, i) => <div key={i} className="aspect-square bg-border-light rounded-2xl animate-pulse" />)}
+                </div>
+              ) : userLists.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <p className="text-text-sub text-sm font-bold">まとめ投稿はありません</p>
+                  <Link href="/lists/new" className="mt-4 px-5 py-2 bg-primary text-white text-xs font-bold rounded-full hover:opacity-90 transition-opacity">まとめを作る</Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {userLists.map((list, i) => (
+                    <motion.div key={list.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05, type: "spring" }}>
+                      <Link href={`/lists/${list.id}/edit`} className="block group relative rounded-2xl overflow-hidden border border-border-light bg-white shadow-sm hover:shadow-md transition-shadow">
+                        <div className="aspect-square bg-background-soft">
+                          {list.coverUrl
+                            ? <img src={list.coverUrl} alt={list.title} className="w-full h-full object-cover" />
+                            : <div className="w-full h-full flex items-center justify-center text-text-sub/30"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 16 16"><path d="M1.5 1a.5.5 0 0 0-.5.5v3a.5.5 0 0 1-1 0v-3A1.5 1.5 0 0 1 1.5 0h3a.5.5 0 0 1 0 1zM11 .5a.5.5 0 0 1 .5-.5h3A1.5 1.5 0 0 1 16 1.5v3a.5.5 0 0 1-1 0v-3a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 1-.5-.5M.5 11a.5.5 0 0 1 .5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 1 0 1h-3A1.5 1.5 0 0 1 0 14.5v-3a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v3a1.5 1.5 0 0 1-1.5 1.5h-3a.5.5 0 0 1 0-1h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 1 .5-.5"/><path d="M3 5.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/></svg></div>
+                          }
+                        </div>
+                        <div className="p-3">
+                          <p className="text-sm font-bold text-text-main line-clamp-2 mb-1">{list.title}</p>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-text-sub">{list.reviewCount}件</span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${list.status === 'published' ? 'bg-primary/10 text-primary' : 'bg-background-soft text-text-sub'}`}>
+                              {list.status === 'published' ? '公開中' : '下書き'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors pointer-events-none rounded-2xl" />
+                      </Link>
+                    </motion.div>
+                  ))}
+                </div>
+              )
+            ) : (() => {
               const filtered = reviews.filter((r) => r.status === activeTab);
               if (filtered.length === 0) {
                 return (

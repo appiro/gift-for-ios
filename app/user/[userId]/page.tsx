@@ -10,6 +10,8 @@ interface UserProfile {
   displayName: string | null;
   iconUrl: string;
   reviewCount: number;
+  wantTotal: number;
+  giftTotal: number;
 }
 
 export default function UserProfilePage({ params }: { params: Promise<{ userId: string }> }) {
@@ -60,16 +62,29 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
           </div>
 
           {loading ? (
-            <div className="space-y-2 animate-pulse">
+            <div className="space-y-3 animate-pulse">
               <div className="h-6 w-32 bg-border-light rounded-full" />
-              <div className="h-4 w-20 bg-border-light rounded-full" />
+              <div className="flex gap-4">
+                {[...Array(3)].map((_, i) => <div key={i} className="h-12 w-20 bg-border-light rounded-xl" />)}
+              </div>
             </div>
           ) : (
             <>
-              <h1 className="text-xl font-bold text-text-main">{displayName}</h1>
-              <p className="text-sm text-text-sub mt-1">
-                投稿数 <span className="font-bold text-text-main">{profile?.reviewCount ?? 0}</span>
-              </p>
+              <h1 className="text-xl font-bold text-text-main mb-3">{displayName}</h1>
+              <div className="flex flex-wrap gap-3">
+                <div className="bg-background-soft border border-border-light rounded-2xl px-4 py-2.5 text-center min-w-[72px]">
+                  <p className="text-xl font-black text-text-main">{profile?.reviewCount ?? 0}</p>
+                  <p className="text-[10px] font-bold text-text-sub mt-0.5">投稿数</p>
+                </div>
+                <div className="bg-background-soft border border-border-light rounded-2xl px-4 py-2.5 text-center min-w-[72px]">
+                  <p className="text-xl font-black text-secondary">{profile?.wantTotal ?? 0}</p>
+                  <p className="text-[10px] font-bold text-text-sub mt-0.5">欲しい！</p>
+                </div>
+                <div className="bg-background-soft border border-border-light rounded-2xl px-4 py-2.5 text-center min-w-[72px]">
+                  <p className="text-xl font-black text-accent-strong">{profile?.giftTotal ?? 0}</p>
+                  <p className="text-[10px] font-bold text-text-sub mt-0.5">贈りたい！</p>
+                </div>
+              </div>
             </>
           )}
         </div>

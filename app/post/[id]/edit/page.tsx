@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { WHO_OPTIONS, SCENE_OPTIONS, CATEGORY_OPTIONS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { compressImage } from '@/lib/compressImage';
+import PhotoEditor from '@/components/PhotoEditor';
 import type { Review } from '@/lib/types';
 
 export default function EditReviewPage({ params }: { params: Promise<{ id: string }> }) {
@@ -16,6 +17,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [compressing, setCompressing] = useState(false);
+  const [editingFile, setEditingFile] = useState<{ file: File; index: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [priceUnknown, setPriceUnknown] = useState(false);
 
@@ -77,15 +79,23 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
     init();
   }, [id]);
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setEditingFile({ file, index });
+    e.target.value = '';
+  };
+
+  const handleEditorConfirm = async (edited: File) => {
+    if (!editingFile) return;
+    const index = editingFile.index;
+    setEditingFile(null);
     setCompressing(true);
-    const compressed = await compressImage(file);
+    const compressed = await compressImage(edited);
     setImageFiles(prev => { const n = [...prev]; n[index] = compressed; return n; });
     setImagePreviews(prev => { const n = [...prev]; n[index] = URL.createObjectURL(compressed); return n; });
+    setOriginalUrls(prev => { const n = [...prev]; n[index] = null; return n; });
     setCompressing(false);
-    e.target.value = '';
   };
 
   const removeImage = (index: number) => {
@@ -358,6 +368,14 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
           {error && (
             <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">{error}</div>
           )}
+
+      {editingFile && (
+        <PhotoEditor
+          file={editingFile.file}
+          onConfirm={handleEditorConfirm}
+          onCancel={() => setEditingFile(null)}
+        />
+      )}
 
           <div className="flex justify-between items-center pt-4 border-t border-border-light">
             <Link href={`/post/${id}`} className="px-6 py-3 rounded-full border border-border-light text-text-sub font-bold hover:bg-background-soft transition-colors text-sm">

@@ -14,17 +14,22 @@ export async function GET(
     .eq('id', userId)
     .single();
 
-  // Count published reviews
-  const { count } = await supabase
+  // Count published reviews + sum votes
+  const { count, data: reviews } = await supabase
     .from('reviews')
-    .select('id', { count: 'exact', head: true })
+    .select('want_count, gift_count')
     .eq('user_id', userId)
     .eq('status', 'published');
+
+  const wantTotal = (reviews ?? []).reduce((s, r) => s + (r.want_count ?? 0), 0);
+  const giftTotal = (reviews ?? []).reduce((s, r) => s + (r.gift_count ?? 0), 0);
 
   return Response.json({
     id: userId,
     displayName: profile?.display_name ?? null,
     iconUrl: profile?.icon_url ?? '/icons/cat.png',
-    reviewCount: count ?? 0,
+    reviewCount: count ?? (reviews?.length ?? 0),
+    wantTotal,
+    giftTotal,
   });
 }

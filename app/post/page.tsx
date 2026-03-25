@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { WHO_OPTIONS, SCENE_OPTIONS, CATEGORY_OPTIONS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { compressImage } from '@/lib/compressImage';
+import PhotoEditor from '@/components/PhotoEditor';
 
 export default function PostPage() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function PostPage() {
   const [compressing, setCompressing] = useState(false);
   const fileInputRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
   const [priceUnknown, setPriceUnknown] = useState(false);
+  const [editingFile, setEditingFile] = useState<{ file: File; index: number } | null>(null);
 
   const [formData, setFormData] = useState({
     gender: '',
@@ -94,15 +96,22 @@ export default function PostPage() {
     });
   };
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setEditingFile({ file, index });
+    e.target.value = '';
+  };
+
+  const handleEditorConfirm = async (edited: File) => {
+    if (!editingFile) return;
+    const index = editingFile.index;
+    setEditingFile(null);
     setCompressing(true);
-    const compressed = await compressImage(file);
+    const compressed = await compressImage(edited);
     setImageFiles(prev => { const n = [...prev]; n[index] = compressed; return n; });
     setImagePreviews(prev => { const n = [...prev]; n[index] = URL.createObjectURL(compressed); return n; });
     setCompressing(false);
-    e.target.value = '';
   };
 
   const removeImage = (index: number) => {
@@ -620,5 +629,13 @@ export default function PostPage() {
       </div>
 
     </div>
+
+    {editingFile && (
+      <PhotoEditor
+        file={editingFile.file}
+        onConfirm={handleEditorConfirm}
+        onCancel={() => setEditingFile(null)}
+      />
+    )}
   );
 }

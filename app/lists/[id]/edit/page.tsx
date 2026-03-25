@@ -380,7 +380,7 @@ export default function ListEditPage({ params }: { params: Promise<{ id: string 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className="relative z-10 w-full max-w-lg bg-white rounded-3xl shadow-2xl flex flex-col max-h-[85vh]">
+          <div className="relative z-10 w-full max-w-2xl bg-white rounded-3xl shadow-2xl flex flex-col max-h-[90vh]">
 
             {/* Modal header */}
             <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border-light flex-shrink-0">
@@ -441,7 +441,7 @@ export default function ListEditPage({ params }: { params: Promise<{ id: string 
                           className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-colors ${
                             alreadyAdded ? 'opacity-50 cursor-default' : 'hover:bg-background-soft'
                           }`}>
-                          <div className="flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden bg-background-soft border border-border-light">
+                          <div className="flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden bg-background-soft border border-border-light">
                             {review.imageUrl
                               ? <img src={review.imageUrl} alt={review.title} className="w-full h-full object-cover" />
                               : <div className="w-full h-full bg-border-light" />

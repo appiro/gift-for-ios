@@ -35,5 +35,15 @@ export async function PATCH(request: Request) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 
+  // Sync author_name in reviews and lists when display_name changes
+  if (body.display_name) {
+    await supabase.from('reviews').update({ author_name: body.display_name }).eq('user_id', user.id);
+    await supabase.from('lists').update({ author_name: body.display_name }).eq('user_id', user.id);
+  }
+  if (body.icon_url) {
+    await supabase.from('reviews').update({ author_icon: body.icon_url }).eq('user_id', user.id);
+    await supabase.from('lists').update({ author_icon: body.icon_url }).eq('user_id', user.id);
+  }
+
   return Response.json({ ok: true });
 }
