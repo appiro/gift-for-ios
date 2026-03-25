@@ -37,6 +37,7 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resetCooldown, setResetCooldown] = useState(0);
 
   // URLパラメータにerrorがあれば表示
   const urlError = searchParams.get("error");
@@ -102,6 +103,7 @@ function LoginForm() {
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (resetCooldown > 0) return;
     setLoading(true);
     setError(null);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -111,6 +113,14 @@ function LoginForm() {
       setError(translateError(error.message));
     } else {
       setScreen("reset_sent");
+      // 60秒のクールダウン
+      setResetCooldown(60);
+      const timer = setInterval(() => {
+        setResetCooldown(prev => {
+          if (prev <= 1) { clearInterval(timer); return 0; }
+          return prev - 1;
+        });
+      }, 1000);
     }
     setLoading(false);
   };
@@ -174,9 +184,9 @@ function LoginForm() {
                   className="w-full bg-background-soft border border-border-light rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary focus:bg-white transition-colors"
                 />
               </div>
-              <button type="submit" disabled={loading}
+              <button type="submit" disabled={loading || resetCooldown > 0}
                 className="w-full py-3 rounded-full bg-primary text-white font-bold shadow-sm hover:bg-primary-hover transition-all disabled:opacity-60">
-                {loading ? "送信中..." : "再設定メールを送る"}
+                {loading ? "送信中..." : resetCooldown > 0 ? `再送信まで ${resetCooldown}秒` : "再設定メールを送る"}
               </button>
             </form>
 

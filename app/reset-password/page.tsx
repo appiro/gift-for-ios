@@ -8,6 +8,10 @@ export default function ResetPasswordPage() {
   const supabase = createClient();
   const router = useRouter();
 
+  // PASSWORD_RECOVERY イベントが来るまでフォームを見せない
+  const [isRecovery, setIsRecovery] = useState(false);
+  const [checking, setChecking] = useState(true);
+
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -16,11 +20,24 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  // セッションがなければログインページへ
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) router.push("/login");
+    // Supabaseが PASSWORD_RECOVERY イベントを発行するのを待つ
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setIsRecovery(true);
+        setChecking(false);
+      }
     });
+
+    // タイムアウト: 5秒以内にイベントが来なければ不正アクセスとみなす
+    const timeout = setTimeout(() => {
+      setChecking(false);
+    }, 5000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,15 +47,20 @@ export default function ResetPasswordPage() {
 
     setLoading(true);
     setError(null);
+
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
       setError(error.message);
       setLoading(false);
-    } else {
-      setDone(true);
+      return;
     }
+
+    // パスワード変更後は全デバイスのセッションを無効化
+    await supabase.auth.signOut({ scope: "global" });
+    setDone(true);
   };
 
+  // ─── 完了画面 ───
   if (done) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center px-4 py-12">
@@ -50,12 +72,13 @@ export default function ResetPasswordPage() {
               </svg>
             </div>
             <h2 className="text-xl font-bold text-text-main mb-2">パスワードを変更しました</h2>
-            <p className="text-sm text-text-sub mb-8">新しいパスワードでログインできます。</p>
+            <p className="text-sm text-text-sub mb-2">セキュリティのため、すべてのデバイスからサインアウトしました。</p>
+            <p className="text-sm text-text-sub mb-8">新しいパスワードで再度ログインしてください。</p>
             <button
-              onClick={() => router.push("/")}
+              onClick={() => router.push("/login")}
               className="w-full py-3 rounded-full bg-primary text-white font-bold text-sm hover:bg-primary-hover transition-all"
             >
-              トップへ戻る
+              ログイン画面へ
             </button>
           </div>
         </div>
@@ -63,6 +86,42 @@ export default function ResetPasswordPage() {
     );
   }
 
+  // ─── 確認中 ───
+  if (checking) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // ─── 不正アクセス（リセットリンク経由でない） ───
+  if (!isRecovery) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md text-center">
+          <div className="bg-background-card border border-border-light rounded-3xl shadow-sm p-10">
+            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-5">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" className="text-red-400" viewBox="0 0 16 16">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/>
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-text-main mb-2">無効なリンクです</h2>
+            <p className="text-sm text-text-sub mb-8">パスワード再設定リンクの有効期限が切れているか、すでに使用済みです。もう一度やり直してください。</p>
+            <button
+              onClick={() => router.push("/login")}
+              className="w-full py-3 rounded-full bg-primary text-white font-bold text-sm hover:bg-primary-hover transition-all"
+            >
+              ログイン画面へ
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── パスワード変更フォーム ───
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
@@ -122,6 +181,27 @@ export default function ResetPasswordPage() {
                 </button>
               </div>
             </div>
+
+            {/* パスワード強度インジケーター */}
+            {password.length > 0 && (
+              <div className="space-y-1">
+                <div className="flex gap-1">
+                  {[...Array(4)].map((_, i) => {
+                    const strength = password.length >= 12 ? 4 : password.length >= 10 ? 3 : password.length >= 8 ? 2 : 1;
+                    return (
+                      <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${
+                        i < strength
+                          ? strength <= 1 ? 'bg-red-400' : strength <= 2 ? 'bg-yellow-400' : strength <= 3 ? 'bg-blue-400' : 'bg-green-400'
+                          : 'bg-border-light'
+                      }`} />
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-text-sub">
+                  {password.length < 8 ? '短すぎます' : password.length < 10 ? '普通' : password.length < 12 ? '強い' : 'とても強い'}
+                </p>
+              </div>
+            )}
 
             <button
               type="submit"
