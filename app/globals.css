@@ -1,26 +1,119 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@variant landscape {
+  @media (orientation: landscape) {
+    @slot;
+  }
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@theme {
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  
+  --color-background-soft: var(--bg-soft);
+  --color-background-card: var(--bg-card);
+  --color-text-main: var(--text-main);
+  --color-text-sub: var(--text-sub);
+  --color-border-light: var(--border-light);
+  --color-surface-hover: var(--surface-hover);
+  
+  --font-sans: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
+}
+
+:root {
+  /* Default Theme (Pink base) */
+  --primary: #FFB6B9;
+  --primary-hover: #FFAAA5;
+  --secondary: #FFDAC1;
+  --accent: #E2F0CB;
+  --accent-strong: #FF8BA7;
+  
+  --bg-soft: #FAFAFA;
+  --bg-card: #FFFFFF;
+  --text-main: #5C5C5C;
+  --text-sub: #A0A0A0;
+  --border-light: #F0F0F0;
+  --surface-hover: #F6F6F6;
+
+  --background: var(--bg-soft);
+  --foreground: var(--text-main);
+}
+
+:root[data-theme="blue"] {
+  --primary: #A2D2FF;
+  --primary-hover: #BDE0FE;
+  --secondary: #CDB4DB;
+  --accent: #FFC8DD;
+  --accent-strong: #64A6FF;
+}
+
+:root[data-theme="green"] {
+  --primary: #B5E48C;
+  --primary-hover: #D9ED92;
+  --secondary: #99D98C;
+  --accent: #E2F0CB;
+  --accent-strong: #52B69A;
+}
+
+:root[data-theme="yellow"] {
+  --primary: #FDE2E4; 
+  /* Wait yellow theme */
+  --primary: #FBEA92;
+  --primary-hover: #FAF0B5;
+  --secondary: #FDE2E4;
+  --accent: #E2F0CB;
+  --accent-strong: #FFB703;
+}
+
+:root[data-theme="purple"] {
+  --primary: #CDB4DB;
+  --primary-hover: #D8BFE7;
+  --secondary: #FFC8DD;
+  --accent: #BDE0FE;
+  --accent-strong: #A88BEB;
+}
+
+:root[data-theme="monotone"] {
+  --primary: #CCCCCC;
+  --primary-hover: #EEEEEE;
+  --secondary: #AAAAAA;
+  --accent: #999999;
+  --accent-strong: #444444;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #1A1A1A;
+    --foreground: #EDEDED;
+    --color-background-soft: #141414;
+    --color-background-card: #222222;
+    --color-text-main: #EDEDED;
+    --color-text-sub: #A0A0A0;
+    --color-border-light: #333333;
+    --color-surface-hover: #2A2A2A;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-in-out;
+}
+
+/* iPhoneのセーフエリア対応 */
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
