@@ -44,12 +44,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen flex bg-background-soft">
+    <div className="fixed inset-0 z-[200] flex bg-background-soft">
       {/* Sidebar */}
       <aside className="w-56 bg-white border-r border-border-light flex flex-col flex-shrink-0">
-        <div className="px-5 py-5 border-b border-border-light">
-          <p className="text-[10px] font-bold text-text-sub uppercase tracking-widest mb-0.5">Gift for</p>
-          <h1 className="text-base font-black text-text-main">管理画面</h1>
+        <div className="px-5 py-5 border-b border-border-light flex items-center gap-3">
+          <img src="/icons/cat.png" alt="Gift for" className="w-8 h-8 object-contain" />
+          <div>
+            <p className="text-[10px] font-bold text-text-sub uppercase tracking-widest">Gift for</p>
+            <h1 className="text-sm font-black text-text-main">管理画面</h1>
+          </div>
         </div>
         <nav className="flex-1 py-3">
           {NAV.map(({ href, label, icon }) => {
