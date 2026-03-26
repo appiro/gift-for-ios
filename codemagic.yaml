@@ -2,6 +2,8 @@ workflows:
   ios-workflow:
     name: Gift for iOS
     max_build_duration: 60
+    integrations:
+      app_store_connect: giftfor
     environment:
       xcode: latest
       cocoapods: default
