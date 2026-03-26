@@ -79,7 +79,7 @@ function applyFilters(reviews: Review[], activeFilters: string[]): Review[] {
 }
 
 export default function Home() {
-  const { activeFilters, removeFilter, clearFilters, searchQuery } = useSearch();
+  const { activeFilters, addFilter, removeFilter, clearFilters, searchQuery } = useSearch();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
@@ -111,13 +111,42 @@ export default function Home() {
       <Sidebar />
 
       <div className="flex-1 flex flex-col">
-        {/* Active Filters (Chips) */}
-        <div className="flex items-center flex-wrap gap-2 mb-8 min-h-[32px]">
-          {activeFilters.length > 0 && (
-            <span className="text-xs font-bold text-text-sub mr-2">
-              適用中の条件:
-            </span>
-          )}
+        {/* Mobile Quick Filter Bar */}
+        <div className="lg:hidden flex items-center gap-2 overflow-x-auto hide-scrollbar -mx-2 px-2 pb-2 mb-3">
+          <button
+            onClick={() => setFilterSheetOpen(true)}
+            className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold border transition-all ${
+              activeFilters.length > 0
+                ? 'bg-primary text-white border-primary shadow-sm'
+                : 'bg-background-card text-text-sub border-border-light'
+            }`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5z" />
+            </svg>
+            絞り込み
+            {activeFilters.length > 0 && <span className="bg-white/30 rounded-full px-1">{activeFilters.length}</span>}
+          </button>
+          {['〜3,000円', '3,000円〜5,000円', '5,000円〜10,000円', '10,000円〜'].map((price) => {
+            const active = activeFilters.includes(`予算: ${price}`);
+            return (
+              <button
+                key={price}
+                onClick={() => active ? removeFilter(`予算: ${price}`) : addFilter(`予算: ${price}`)}
+                className={`flex-shrink-0 px-3 py-2 rounded-full text-xs font-bold border transition-all ${
+                  active
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-background-card text-text-sub border-border-light'
+                }`}
+              >
+                {price}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Active Filters (Chips) - desktop + mobile fallback */}
+        <div className="flex items-center flex-wrap gap-2 mb-4 min-h-[28px]">
           <AnimatePresence>
             {activeFilters.map((filter) => (
               <motion.div
@@ -131,21 +160,12 @@ export default function Home() {
                   transition: { duration: 0.2 },
                 }}
                 layout
-                className="flex items-center gap-2 bg-[#ffb3c1]/20 text-[#d00000] border border-[#ffb3c1] px-3 py-1.5 rounded-full text-sm font-medium shadow-sm cursor-pointer hover:bg-[#ffb3c1]/40 transition-colors group"
+                className="flex items-center gap-2 bg-[#ffb3c1]/20 text-[#d00000] border border-[#ffb3c1] px-3 py-1.5 rounded-full text-xs font-medium shadow-sm cursor-pointer hover:bg-[#ffb3c1]/40 transition-colors group"
                 onClick={() => removeFilter(filter)}
               >
                 {filter}
                 <div className="p-0.5 rounded-full bg-[#ffb3c1]/50 group-hover:bg-[#ffb3c1] text-[#d00000] transition-colors">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="10"
-                    height="10"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                  >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                     <line x1="2" y1="14" x2="14" y2="2" />
                     <line x1="2" y1="2" x2="14" y2="14" />
                   </svg>
@@ -153,7 +173,6 @@ export default function Home() {
               </motion.div>
             ))}
           </AnimatePresence>
-
           <AnimatePresence>
             {activeFilters.length > 0 && (
               <motion.button
@@ -162,7 +181,7 @@ export default function Home() {
                 exit={{ opacity: 0 }}
                 layout
                 onClick={clearFilters}
-                className="text-xs font-bold text-text-sub hover:text-text-main underline ml-2 py-1 px-2 rounded-md hover:bg-background-soft transition-colors"
+                className="text-xs font-bold text-text-sub hover:text-text-main underline py-1 px-2 rounded-md hover:bg-background-soft transition-colors"
               >
                 すべてリセット
               </motion.button>
@@ -172,7 +191,7 @@ export default function Home() {
 
         {/* Loading Skeleton */}
         {loading && (
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 gap-y-10">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 gap-y-5 sm:gap-6 sm:gap-y-10">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="flex flex-col gap-2 animate-pulse">
                 <div className="aspect-square w-full rounded-2xl bg-border-light" />
@@ -187,7 +206,7 @@ export default function Home() {
         {!loading && (
           <motion.div
             layout
-            className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 gap-y-10"
+            className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 gap-y-5 sm:gap-6 sm:gap-y-10"
           >
             <AnimatePresence mode="popLayout">
               {displayReviews.map((review, i) => (
@@ -233,23 +252,6 @@ export default function Home() {
             </button>
           </div>
         )}
-
-        {/* Mobile Floating Filter Button - above mobile nav */}
-        <div className="lg:hidden fixed bottom-20 right-4 z-40">
-          <button
-            onClick={() => setFilterSheetOpen(true)}
-            className="bg-primary text-white w-14 h-14 rounded-full font-bold shadow-xl flex items-center justify-center active:scale-95 transition-transform relative"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5zm1 .5v1.308l4.372 4.858A.5.5 0 0 1 7 8.5v5.306l2-.666V8.5a.5.5 0 0 1 .128-.334L13.5 3.308V2z" />
-            </svg>
-            {activeFilters.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-accent-strong text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                {activeFilters.length}
-              </span>
-            )}
-          </button>
-        </div>
 
         <MobileFilterSheet open={filterSheetOpen} onClose={() => setFilterSheetOpen(false)} />
       </div>

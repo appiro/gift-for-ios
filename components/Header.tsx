@@ -251,6 +251,32 @@ export default function Header() {
         </div>
       </div>
 
+      {/* Mobile Search Row */}
+      <div className="md:hidden px-3 pb-2.5">
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="ギフトを探す..."
+            className="w-full text-sm bg-background-soft border border-border-light rounded-full pl-9 pr-8 py-2.5 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+          />
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-sub pointer-events-none">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+            </svg>
+          </span>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-sub"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="2" y1="14" x2="14" y2="2"/><line x1="2" y1="2" x2="14" y2="14"/></svg>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Bottom Row - Nav (desktop only) */}
       <div className="hidden md:block border-t border-border-light/60">
         <div className="flex items-center px-6 max-w-7xl mx-auto">

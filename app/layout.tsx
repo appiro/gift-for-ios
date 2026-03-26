@@ -74,7 +74,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <SearchProvider>
           <Header />
-          <main className="flex flex-col flex-1 w-full mx-auto px-3 sm:px-6 mt-2 sm:mt-4 max-w-[1400px] pb-24 md:pb-6">
+          <main className="flex flex-col flex-1 w-full mx-auto px-2 sm:px-6 mt-1 sm:mt-4 max-w-[1400px] pb-24 md:pb-6">
             {children}
           </main>
           <Footer />
