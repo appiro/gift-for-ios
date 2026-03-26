@@ -57,6 +57,14 @@ export default function PostPage() {
   const [rakutenSearched, setRakutenSearched] = useState(false);
   const [showCustomUrl, setShowCustomUrl] = useState(false);
 
+  // Accordion state for relationship/scene/category
+  const [openAccordions, setOpenAccordions] = useState<Set<string>>(new Set());
+  const toggleAccordion = (key: string) => setOpenAccordions(prev => {
+    const next = new Set(prev);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  });
+
   // Check auth
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -220,6 +228,7 @@ export default function PostPage() {
   };
 
   const isStep1Valid = !!formData.productName.trim();
+  const isStep2Valid = !!(formData.gender && formData.ageGroup);
   const isStep3Valid = !!(formData.episode && (priceUnknown || formData.priceCategory) && formData.productName && imagePreviews[0]);
 
   const Spinner = ({ size = 4, color = 'text-white' }: { size?: number; color?: string }) => (
@@ -366,9 +375,9 @@ export default function PostPage() {
           </div>
         )}
 
-        {/* ── STEP 2: 楽天商品選択 ────────────────────── */}
+        {/* ── STEP 2: 性別・年齢層 ─────────────────────── */}
         {step === 2 && (
-          <div className="space-y-6 animate-fade-in">
+          <div className="space-y-8 animate-fade-in">
             <div className="flex items-center justify-between">
               <button onClick={handleBack} className="text-sm text-text-sub hover:text-primary flex items-center gap-1 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
@@ -383,96 +392,48 @@ export default function PostPage() {
               </div>
             </div>
 
-            <div>
-              <p className="text-sm font-bold text-text-main mb-1">楽天で商品を選択</p>
-              <p className="text-xs text-text-sub mb-4">該当する商品があれば選んでください。なければスキップできます。</p>
-
-              {/* Selected state */}
-              {formData.rakutenUrl && (
-                <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-xl mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#ef4444" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/><path d="m10.97 4.97-.02.022-3.473 4.425-2.093-2.094a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05"/></svg>
-                  <span className="text-sm font-bold text-red-700 flex-1">楽天商品を選択済み</span>
-                  <button onClick={clearRakutenSelection} className="text-xs text-red-400 hover:text-red-600 font-bold">解除</button>
-                </div>
-              )}
-
-              {/* Loading skeleton */}
-              {rakutenLoading && (
-                <div className="space-y-2">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} className="flex items-center gap-3 p-3 border border-border-light rounded-xl animate-pulse">
-                      <div className="w-14 h-14 bg-border-light rounded-lg flex-shrink-0" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-3 bg-border-light rounded-full w-3/4" />
-                        <div className="h-2.5 bg-border-light rounded-full w-1/3" />
-                      </div>
-                    </div>
+            <div className="space-y-6">
+              {/* Gender */}
+              <div>
+                <h3 className="text-sm font-bold text-text-main mb-3">
+                  ギフトを贈った相手の性別 <span className="text-accent-strong text-xs">*</span>
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {['女性', '男性', 'その他', '指定なし'].map(g => (
+                    <button key={g} onClick={() => updateData('gender', g)}
+                      className={`py-3 rounded-xl flex items-center justify-center gap-2 transition-all border-2 text-sm font-bold ${
+                        formData.gender === g ? 'border-primary bg-primary/10 text-primary' : 'border-border-light bg-background-soft text-text-sub hover:border-primary/50'
+                      }`}>
+                      {g === '女性' && '👩'}{g === '男性' && '👨'}{g === 'その他' && '🧑'}{g === '指定なし' && '🎁'}
+                      {g}
+                    </button>
                   ))}
                 </div>
-              )}
+              </div>
 
-              {/* Results */}
-              {!rakutenLoading && rakutenSearched && (
-                <>
-                  {rakutenItems.length === 0 ? (
-                    <div className="text-center py-6 text-text-sub text-sm border border-dashed border-border-light rounded-xl">
-                      楽天に該当商品が見つかりませんでした
-                    </div>
-                  ) : (
-                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                      {rakutenItems.map((item, i) => (
-                        <button key={i} onClick={() => selectRakutenItem(item)}
-                          className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
-                            formData.rakutenUrl === item.affiliateUrl
-                              ? 'border-red-400 bg-red-50'
-                              : 'border-border-light hover:border-red-300 hover:bg-background-soft'
-                          }`}>
-                          {item.mediumImageUrl && (
-                            <img src={item.mediumImageUrl} alt={item.itemName} className="w-14 h-14 object-contain rounded-lg bg-background-soft flex-shrink-0" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-text-main line-clamp-2 leading-relaxed">{item.itemName}</p>
-                            <p className="text-xs text-text-sub mt-1">¥{item.itemPrice.toLocaleString()} · {item.shopName}</p>
-                          </div>
-                          {formData.rakutenUrl === item.affiliateUrl && (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#ef4444" viewBox="0 0 16 16" className="flex-shrink-0"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/><path d="m10.97 4.97-.02.022-3.473 4.425-2.093-2.094a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05"/></svg>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* Custom URL section */}
-            <div className="border-t border-border-light pt-4">
-              <button onClick={() => setShowCustomUrl(v => !v)}
-                className="flex items-center gap-2 text-xs font-bold text-text-sub hover:text-primary transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"
-                  className={`transition-transform ${showCustomUrl ? 'rotate-180' : ''}`}>
-                  <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
-                </svg>
-                楽天以外のショップURLを入力する
-              </button>
-              {showCustomUrl && (
-                <div className="mt-3 space-y-2">
-                  <p className="text-xs text-text-sub">入力したURLは「商品詳細を見る」として口コミに表示されます。</p>
-                  <input
-                    type="url"
-                    placeholder="https://..."
-                    value={formData.productUrl}
-                    onChange={(e) => updateData('productUrl', e.target.value)}
-                    className="w-full bg-background-soft border border-border-light rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary focus:bg-white transition-colors"
-                  />
+              {/* Age */}
+              <div>
+                <h3 className="text-sm font-bold text-text-main mb-3">
+                  相手の年齢層 <span className="text-accent-strong text-xs">*</span>
+                </h3>
+                <div className="grid grid-cols-3 gap-2">
+                  {['10代', '20代前半', '20代後半', '30代', '40代', '50代〜'].map(age => (
+                    <button key={age} onClick={() => updateData('ageGroup', age)}
+                      className={`py-3 rounded-xl text-sm font-bold transition-all border-2 ${
+                        formData.ageGroup === age ? 'border-primary bg-primary text-white' : 'border-border-light bg-background-soft text-text-sub hover:border-primary/50'
+                      }`}>
+                      {age}
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
             </div>
 
-            <div className="pt-4 flex justify-between items-center">
-              <span className="text-xs text-text-sub">商品が見つからない場合はスキップできます</span>
-              <button onClick={handleNext2}
-                className="px-8 py-3 rounded-full font-bold shadow-sm transition-all flex items-center gap-2 bg-primary text-white hover:bg-primary-hover hover:scale-105">
+            <div className="pt-6 border-t border-border-light flex justify-end">
+              <button onClick={handleNext2} disabled={!isStep2Valid}
+                className={`px-8 py-3 rounded-full font-bold shadow-sm transition-all flex items-center gap-2 ${
+                  isStep2Valid ? 'bg-primary text-white hover:bg-primary-hover hover:scale-105' : 'bg-border-light text-text-sub cursor-not-allowed opacity-70'
+                }`}>
                 次へ進む
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                   <path fillRule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
@@ -484,7 +445,7 @@ export default function PostPage() {
 
         {/* ── STEP 3: 詳細情報 ────────────────────────── */}
         {step === 3 && (
-          <div className="space-y-8 animate-fade-in">
+          <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
               <button onClick={handleBack} className="text-sm text-text-sub hover:text-primary flex items-center gap-1 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
@@ -495,134 +456,157 @@ export default function PostPage() {
               <p className="text-text-sub font-medium text-sm">ギフトの詳細を教えてください✨</p>
             </div>
 
-            {/* Photo & Core Info Grid */}
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* Photo Upload */}
-              <div>
-                <label className="block text-sm font-bold text-text-main mb-2">
-                  写真 <span className="text-accent-strong text-xs">*</span>
-                  <span className="text-xs font-normal text-text-sub ml-2">（最大2枚・1枚目必須）</span>
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {[0, 1].map((index) => (
-                    <div key={index}>
-                      <div onClick={() => fileInputRefs[index].current?.click()}
-                        className="aspect-square bg-background-soft border-2 border-dashed border-border-light rounded-2xl flex flex-col items-center justify-center text-text-sub hover:bg-white hover:border-primary cursor-pointer transition-colors group overflow-hidden relative">
-                        {compressing && !imagePreviews[index] ? (
-                          <Spinner size={8} color="text-primary" />
-                        ) : imagePreviews[index] ? (
-                          <img src={imagePreviews[index]!} alt="preview" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="flex flex-col items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="text-border-light group-hover:text-primary transition-colors" viewBox="0 0 16 16">
-                              <path d="M10.5 8.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/>
-                              <path d="M2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 3.172 4zm.5 2a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1m9 2.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0"/>
-                            </svg>
-                            <span className="text-xs text-text-sub">{index === 0 ? '必須' : '任意'}</span>
-                          </div>
-                        )}
+            {/* Rakuten product selection */}
+            <div className="bg-background-soft rounded-2xl p-4 space-y-3">
+              <p className="text-sm font-bold text-text-main">楽天で商品を選択</p>
+              <p className="text-xs text-text-sub">該当する商品があれば選んでください。なければスキップできます。</p>
+
+              {formData.rakutenUrl && (
+                <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-xl">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#ef4444" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/><path d="m10.97 4.97-.02.022-3.473 4.425-2.093-2.094a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05"/></svg>
+                  <span className="text-sm font-bold text-red-700 flex-1">楽天商品を選択済み</span>
+                  <button onClick={clearRakutenSelection} className="text-xs text-red-400 hover:text-red-600 font-bold">解除</button>
+                </div>
+              )}
+
+              {rakutenLoading && (
+                <div className="space-y-2">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 border border-border-light rounded-xl animate-pulse bg-white">
+                      <div className="w-14 h-14 bg-border-light rounded-lg flex-shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3 bg-border-light rounded-full w-3/4" />
+                        <div className="h-2.5 bg-border-light rounded-full w-1/3" />
                       </div>
-                      <input ref={fileInputRefs[index]} type="file" accept="image/*"
-                        onChange={(e) => handleImageChange(e, index)} className="hidden" />
-                      {imagePreviews[index] && (
-                        <button onClick={() => removeImage(index)} className="mt-1 w-full text-xs text-text-sub hover:text-red-500 transition-colors text-center">削除</button>
-                      )}
                     </div>
                   ))}
                 </div>
-              </div>
+              )}
 
-              {/* Gender + Age + Price */}
-              <div className="space-y-5">
-                {/* Gender */}
-                <div>
-                  <h3 className="text-sm font-bold text-text-main mb-3 flex items-center gap-2">
-                    <span className="bg-primary text-white w-5 h-5 rounded-full inline-flex items-center justify-center text-xs">1</span>
-                    性別を選択 <span className="text-accent-strong text-xs">*</span>
-                  </h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['女性', '男性', 'その他', '指定なし'].map(g => (
-                      <button key={g} onClick={() => updateData('gender', g)}
-                        className={`py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all border-2 text-sm font-bold ${
-                          formData.gender === g ? 'border-primary bg-primary/10 text-primary' : 'border-border-light bg-background-soft text-text-sub hover:border-primary/50'
+              {!rakutenLoading && rakutenSearched && (
+                rakutenItems.length === 0 ? (
+                  <div className="text-center py-4 text-text-sub text-sm border border-dashed border-border-light rounded-xl bg-white">
+                    楽天に該当商品が見つかりませんでした
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {rakutenItems.map((item, i) => (
+                      <button key={i} onClick={() => selectRakutenItem(item)}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left bg-white ${
+                          formData.rakutenUrl === item.affiliateUrl
+                            ? 'border-red-400 bg-red-50'
+                            : 'border-border-light hover:border-red-300 hover:bg-background-soft'
                         }`}>
-                        {g === '女性' && '👩'}{g === '男性' && '👨'}{g === 'その他' && '🧑'}{g === '指定なし' && '🎁'}
-                        {g}
+                        {item.mediumImageUrl && (
+                          <img src={item.mediumImageUrl} alt={item.itemName} className="w-14 h-14 object-contain rounded-lg bg-background-soft flex-shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-text-main line-clamp-2 leading-relaxed">{item.itemName}</p>
+                          <p className="text-xs text-text-sub mt-1">¥{item.itemPrice.toLocaleString()} · {item.shopName}</p>
+                        </div>
+                        {formData.rakutenUrl === item.affiliateUrl && (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#ef4444" viewBox="0 0 16 16" className="flex-shrink-0"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/><path d="m10.97 4.97-.02.022-3.473 4.425-2.093-2.094a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05"/></svg>
+                        )}
                       </button>
                     ))}
                   </div>
-                </div>
+                )
+              )}
 
-                {/* Age */}
-                <div>
-                  <h3 className="text-sm font-bold text-text-main mb-3 flex items-center gap-2">
-                    <span className="bg-primary text-white w-5 h-5 rounded-full inline-flex items-center justify-center text-xs">2</span>
-                    年齢層を選択 <span className="text-accent-strong text-xs">*</span>
-                  </h3>
-                  <div className="grid grid-cols-3 gap-2">
-                    {['10代', '20代前半', '20代後半', '30代', '40代', '50代〜'].map(age => (
-                      <button key={age} onClick={() => updateData('ageGroup', age)}
-                        className={`py-2 rounded-xl text-xs font-bold transition-all border-2 ${
-                          formData.ageGroup === age ? 'border-primary bg-primary text-white' : 'border-border-light bg-background-soft text-text-sub hover:border-primary/50'
-                        }`}>
-                        {age}
-                      </button>
-                    ))}
-                  </div>
+              <button onClick={() => setShowCustomUrl(v => !v)}
+                className="flex items-center gap-2 text-xs font-bold text-text-sub hover:text-primary transition-colors pt-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"
+                  className={`transition-transform ${showCustomUrl ? 'rotate-180' : ''}`}>
+                  <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
+                </svg>
+                楽天以外のショップURLを入力する
+              </button>
+              {showCustomUrl && (
+                <div className="space-y-2">
+                  <p className="text-xs text-text-sub">入力したURLは「商品詳細を見る」として口コミに表示されます。</p>
+                  <input type="url" placeholder="https://..." value={formData.productUrl}
+                    onChange={(e) => updateData('productUrl', e.target.value)}
+                    className="w-full bg-white border border-border-light rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors" />
                 </div>
-
-                {/* Price */}
-                <div>
-                  <label className="block text-sm font-bold text-text-main mb-2">予算（約） <span className="text-accent-strong text-xs">*</span></label>
-                  {!priceUnknown && (
-                    <div className="relative max-w-[200px]">
-                      <input type="number" step="100" placeholder="5000" value={formData.priceCategory}
-                        onChange={(e) => updateData('priceCategory', e.target.value)}
-                        className="w-full bg-background-soft border border-border-light rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-primary focus:bg-white transition-colors" />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-main font-bold text-sm">円</span>
-                    </div>
-                  )}
-                  <label className="flex items-center gap-2 mt-2 cursor-pointer select-none">
-                    <input type="checkbox" checked={priceUnknown}
-                      onChange={(e) => { setPriceUnknown(e.target.checked); if (e.target.checked) updateData('priceCategory', ''); }}
-                      className="rounded" />
-                    <span className="text-xs text-text-sub">値段がわからない</span>
-                  </label>
-                </div>
-              </div>
+              )}
             </div>
 
-            {/* Chips */}
-            <div className="space-y-6 pt-6 border-t border-border-light">
+            {/* Price */}
+            <div>
+              <label className="block text-sm font-bold text-text-main mb-2">予算（約） <span className="text-accent-strong text-xs">*</span></label>
+              {!priceUnknown && (
+                <div className="relative max-w-[200px]">
+                  <input type="number" step="100" placeholder="5000" value={formData.priceCategory}
+                    onChange={(e) => updateData('priceCategory', e.target.value)}
+                    className="w-full bg-background-soft border border-border-light rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-primary focus:bg-white transition-colors" />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-main font-bold text-sm">円</span>
+                </div>
+              )}
+              <label className="flex items-center gap-2 mt-2 cursor-pointer select-none">
+                <input type="checkbox" checked={priceUnknown}
+                  onChange={(e) => { setPriceUnknown(e.target.checked); if (e.target.checked) updateData('priceCategory', ''); }}
+                  className="rounded" />
+                <span className="text-xs text-text-sub">値段がわからない</span>
+              </label>
+            </div>
+
+            {/* Accordion chips */}
+            <div className="space-y-2 border-t border-border-light pt-4">
               {[
                 { key: 'relationship' as const, label: '具体的な関係性', options: WHO_OPTIONS },
                 { key: 'scene' as const, label: 'シーン', options: SCENE_OPTIONS },
                 { key: 'category' as const, label: 'カテゴリ', options: CATEGORY_OPTIONS },
-              ].map(({ key, label, options }) => (
-                <div key={key}>
-                  <label className="block text-sm font-bold text-text-main mb-2">
-                    {label} <span className="text-xs font-normal text-text-sub ml-2">（最大3つまで）</span>
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {options.map(opt => {
-                      const isSelected = formData[key].includes(opt);
-                      const isDisabled = !isSelected && formData[key].length >= 3;
-                      return (
-                        <button key={opt} onClick={() => toggleArrayItem(key, opt)} disabled={isDisabled}
-                          className={`py-1.5 px-3 rounded-full text-xs font-bold transition-all border ${
-                            isSelected ? 'border-accent-strong bg-accent-strong text-white' : 'border-border-light text-text-main bg-white hover:border-accent-strong/50 hover:text-accent-strong'
-                          } ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}>
-                          {opt}
-                        </button>
-                      );
-                    })}
+              ].map(({ key, label, options }) => {
+                const isOpen = openAccordions.has(key);
+                const selected = formData[key];
+                return (
+                  <div key={key} className="border border-border-light rounded-xl overflow-hidden">
+                    <button onClick={() => toggleAccordion(key)}
+                      className="w-full flex items-center justify-between px-4 py-3 bg-background-soft hover:bg-white transition-colors text-left">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-text-main">{label}</span>
+                        <span className="text-xs text-text-sub">（最大3つ）</span>
+                        {selected.length > 0 && (
+                          <span className="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{selected.length}</span>
+                        )}
+                      </div>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"
+                        className={`text-text-sub transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}>
+                        <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
+                      </svg>
+                    </button>
+                    {isOpen && (
+                      <div className="px-4 py-3 bg-white border-t border-border-light">
+                        {selected.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-3">
+                            {selected.map(v => (
+                              <span key={v} className="py-1 px-3 rounded-full text-xs font-bold border border-accent-strong bg-accent-strong text-white">{v}</span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                          {options.map(opt => {
+                            const isSelected = selected.includes(opt);
+                            const isDisabled = !isSelected && selected.length >= 3;
+                            return (
+                              <button key={opt} onClick={() => toggleArrayItem(key, opt)} disabled={isDisabled}
+                                className={`py-1.5 px-3 rounded-full text-xs font-bold transition-all border ${
+                                  isSelected ? 'border-accent-strong bg-accent-strong text-white' : 'border-border-light text-text-main bg-white hover:border-accent-strong/50 hover:text-accent-strong'
+                                } ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}>
+                                {opt}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Episode */}
-            <div className="pt-6 border-t border-border-light">
+            <div>
               <label className="block text-sm font-bold text-text-main mb-2">
                 このギフトを選んだ理由・喜ばれたポイント <span className="text-accent-strong text-xs">*</span>
               </label>
@@ -631,11 +615,46 @@ export default function PostPage() {
                 className="w-full bg-background-soft border border-border-light rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary focus:bg-white transition-colors resize-none" />
             </div>
 
+            {/* Photo Upload */}
+            <div>
+              <label className="block text-sm font-bold text-text-main mb-2">
+                写真 <span className="text-accent-strong text-xs">*</span>
+                <span className="text-xs font-normal text-text-sub ml-2">（最大2枚・1枚目必須）</span>
+              </label>
+              <div className="grid grid-cols-2 gap-3 max-w-xs">
+                {[0, 1].map((index) => (
+                  <div key={index}>
+                    <div onClick={() => fileInputRefs[index].current?.click()}
+                      className="aspect-square bg-background-soft border-2 border-dashed border-border-light rounded-2xl flex flex-col items-center justify-center text-text-sub hover:bg-white hover:border-primary cursor-pointer transition-colors group overflow-hidden">
+                      {compressing && !imagePreviews[index] ? (
+                        <Spinner size={8} color="text-primary" />
+                      ) : imagePreviews[index] ? (
+                        <img src={imagePreviews[index]!} alt="preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="flex flex-col items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="text-border-light group-hover:text-primary transition-colors" viewBox="0 0 16 16">
+                            <path d="M10.5 8.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/>
+                            <path d="M2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 3.172 4zm.5 2a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1m9 2.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0"/>
+                          </svg>
+                          <span className="text-xs text-text-sub">{index === 0 ? '必須' : '任意'}</span>
+                        </div>
+                      )}
+                    </div>
+                    <input ref={fileInputRefs[index]} type="file" accept="image/*"
+                      onChange={(e) => handleImageChange(e, index)} className="hidden" />
+                    {imagePreviews[index] && (
+                      <button onClick={() => removeImage(index)} className="mt-1 w-full text-xs text-text-sub hover:text-red-500 transition-colors text-center">削除</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {error && (
               <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">{error}</div>
             )}
 
-            <div className="pt-6 flex justify-between items-center">
+            <div className="pt-4 flex justify-between items-center border-t border-border-light">
               <span className="text-xs text-text-sub">必須項目をすべて埋めてください</span>
               <button onClick={handleSubmit} disabled={!isStep3Valid || submitting || compressing}
                 className={`px-10 py-3.5 rounded-full font-bold shadow-lg transition-all flex items-center gap-2 ${
