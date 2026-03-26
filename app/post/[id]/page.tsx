@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { WantButton, GiftButton } from '@/components/AnimatedActionButtons';
 import { createClient } from '@/lib/supabase/client';
 import type { Review } from '@/lib/types';
+import { rakutenAffiliateUrl, rakutenSearchUrl } from '@/lib/rakuten';
 
 interface Comment {
   id: string;
@@ -320,25 +321,25 @@ export default function PostDetail({
                 <p className="text-sm text-text-main leading-relaxed whitespace-pre-wrap relative z-10">{review.episode}</p>
               </div>
 
-              {/* Product Card - only show if any shop link exists */}
-              {(review.amazonUrl || review.rakutenUrl || review.productUrl) && (
-                <div className="border border-border-light rounded-2xl p-4 bg-white">
-                  <span className="text-xs font-bold text-primary block mb-3">ネットショップ</span>
-                  <h3 className="text-sm font-bold text-text-main mb-3 line-clamp-1">{review.productName}</h3>
-                  {review.referencePrice && <p className="text-xs text-text-sub mb-3">参考価格: {review.referencePrice}</p>}
-                  <div className="flex flex-wrap items-center gap-2">
-                    {review.productUrl && (
-                      <a href={review.productUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[120px] py-1.5 bg-primary text-white rounded-lg text-xs font-bold text-center hover:opacity-90">ショップで見る</a>
-                    )}
-                    {review.amazonUrl && (
-                      <a href={review.amazonUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[120px] py-1.5 bg-orange-500 text-white rounded-lg text-xs font-bold text-center hover:opacity-90">Amazonで見る</a>
-                    )}
-                    {review.rakutenUrl && (
-                      <a href={review.rakutenUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[120px] py-1.5 bg-red-500 text-white rounded-lg text-xs font-bold text-center hover:opacity-90">楽天で見る</a>
-                    )}
-                  </div>
+              {/* Product Card */}
+              <div className="border border-border-light rounded-2xl p-4 bg-white">
+                <span className="text-xs font-bold text-primary block mb-3">ネットショップ</span>
+                <h3 className="text-sm font-bold text-text-main mb-3 line-clamp-1">{review.productName}</h3>
+                {review.referencePrice && <p className="text-xs text-text-sub mb-3">参考価格: {review.referencePrice}</p>}
+                <div className="flex flex-wrap items-center gap-2">
+                  {review.productUrl && (
+                    <a href={review.productUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[120px] py-1.5 bg-primary text-white rounded-lg text-xs font-bold text-center hover:opacity-90">ショップで見る</a>
+                  )}
+                  {review.amazonUrl && (
+                    <a href={review.amazonUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[120px] py-1.5 bg-orange-500 text-white rounded-lg text-xs font-bold text-center hover:opacity-90">Amazonで見る</a>
+                  )}
+                  {review.rakutenUrl ? (
+                    <a href={rakutenAffiliateUrl(review.rakutenUrl)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[120px] py-1.5 bg-red-500 text-white rounded-lg text-xs font-bold text-center hover:opacity-90">楽天で見る</a>
+                  ) : (
+                    <a href={rakutenSearchUrl(review.productName)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[120px] py-1.5 bg-red-500 text-white rounded-lg text-xs font-bold text-center hover:opacity-90">楽天で探す</a>
+                  )}
                 </div>
-              )}
+              </div>
 
               {/* Comment Section */}
               <div className="pt-6 border-t border-border-light">
