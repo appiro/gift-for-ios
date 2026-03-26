@@ -57,7 +57,7 @@ export default function PostDetail({
   const [replyText, setReplyText] = useState('');
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
   const [ngError, setNgError] = useState('');
-  const [rakutenProduct, setRakutenProduct] = useState<Pick<RakutenItem, 'itemName' | 'itemPrice' | 'mediumImageUrl' | 'shopName'> | null>(null);
+  const [rakutenProduct, setRakutenProduct] = useState<{ itemName: string; itemPrice: number; mediumImageUrl: string; shopName: string } | null>(null);
 
   useEffect(() => {
     // Load review
