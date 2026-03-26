@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 
-const APPLICATION_ID = (process.env.RAKUTEN_APPLICATION_ID ?? '').replace(/-/g, '');
+const APPLICATION_ID = process.env.RAKUTEN_APPLICATION_ID ?? '';
+const ACCESS_KEY = process.env.RAKUTEN_ACCESS_KEY ?? '';
 const AFFILIATE_ID = '523fa562.2be79479.523fa563.3c618458';
 
 export interface RakutenItem {
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   const res = await fetch(
     `https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706?${params}`,
-    { cache: 'no-store' }
+    { cache: 'no-store', headers: { 'Authorization': `ESA ${ACCESS_KEY}` } }
   );
 
   if (!res.ok) {
