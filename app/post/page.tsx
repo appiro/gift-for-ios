@@ -31,6 +31,7 @@ export default function PostPage() {
     productTags: [] as string[],   // productsテーブル由来のタグ（商品タグ）
     priceCategory: '',
     productUrl: '',
+    rakutenUrl: '',
     relationship: [] as string[],
     scene: [] as string[],
     category: [] as string[],
@@ -43,6 +44,30 @@ export default function PostPage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const productWrapRef = useRef<HTMLDivElement>(null);
+
+  // Rakuten product search
+  type RakutenItem = { itemName: string; itemPrice: number; affiliateUrl: string; mediumImageUrl: string; shopName: string };
+  const [rakutenItems, setRakutenItems] = useState<RakutenItem[]>([]);
+  const [rakutenLoading, setRakutenLoading] = useState(false);
+  const [showRakuten, setShowRakuten] = useState(false);
+
+  const searchRakuten = async () => {
+    const q = formData.productName.trim();
+    if (!q) return;
+    setRakutenLoading(true);
+    setShowRakuten(true);
+    try {
+      const res = await fetch(`/api/rakuten/search?q=${encodeURIComponent(q)}`);
+      if (res.ok) setRakutenItems(await res.json());
+    } finally {
+      setRakutenLoading(false);
+    }
+  };
+
+  const selectRakutenItem = (item: RakutenItem) => {
+    setFormData(prev => ({ ...prev, rakutenUrl: item.affiliateUrl }));
+    setShowRakuten(false);
+  };
 
   // Check auth on mount
   useEffect(() => {
@@ -157,6 +182,7 @@ export default function PostPage() {
           productName: formData.productName,
           productId: formData.productId || null,
           productUrl: formData.productUrl || null,
+          rakutenUrl: formData.rakutenUrl || null,
           price: priceUnknown ? '不明' : `〜${Number(formData.priceCategory).toLocaleString()}円`,
           imageUrl: uploadedUrls[0] ?? '',
           images: uploadedUrls,
@@ -481,8 +507,65 @@ export default function PostPage() {
                   </label>
                 </div>
 
+                {/* Rakuten search */}
                 <div>
-                  <label className="block text-sm font-bold text-text-main mb-2">ネットショップURL <span className="text-xs font-normal text-text-sub ml-1">（任意）</span></label>
+                  <label className="block text-sm font-bold text-text-main mb-2">
+                    楽天で商品を探す
+                    <span className="text-xs font-normal text-text-sub ml-1">（任意）</span>
+                  </label>
+                  {formData.rakutenUrl ? (
+                    <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="#ef4444" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/><path d="m10.97 4.97-.02.022-3.473 4.425-2.093-2.094a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05"/></svg>
+                      <span className="text-xs text-red-700 font-bold flex-1 truncate">楽天商品を選択済み</span>
+                      <button onClick={() => setFormData(prev => ({ ...prev, rakutenUrl: '' }))}
+                        className="text-xs text-red-400 hover:text-red-600 font-bold">解除</button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={searchRakuten}
+                        disabled={!formData.productName.trim() || rakutenLoading}
+                        className="w-full py-2.5 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+                      >
+                        {rakutenLoading ? (
+                          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg>
+                        )}
+                        商品名で楽天を検索
+                      </button>
+                      {showRakuten && (
+                        <div className="border border-border-light rounded-xl overflow-hidden bg-white shadow-lg">
+                          {rakutenItems.length === 0 && !rakutenLoading ? (
+                            <p className="text-xs text-text-sub text-center py-4">商品が見つかりませんでした</p>
+                          ) : (
+                            <div className="divide-y divide-border-light max-h-80 overflow-y-auto">
+                              {rakutenItems.map((item, i) => (
+                                <button key={i} type="button" onClick={() => selectRakutenItem(item)}
+                                  className="w-full flex items-center gap-3 p-3 hover:bg-background-soft transition-colors text-left">
+                                  {item.mediumImageUrl && (
+                                    <img src={item.mediumImageUrl} alt={item.itemName} className="w-12 h-12 object-contain rounded-lg bg-background-soft flex-shrink-0" />
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-bold text-text-main line-clamp-2">{item.itemName}</p>
+                                    <p className="text-xs text-text-sub mt-0.5">{item.itemPrice.toLocaleString()}円 · {item.shopName}</p>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          <button onClick={() => setShowRakuten(false)} className="w-full py-2 text-xs text-text-sub hover:text-text-main border-t border-border-light">
+                            閉じる
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-text-main mb-2">その他ショップURL <span className="text-xs font-normal text-text-sub ml-1">（任意）</span></label>
                   <input
                     type="url"
                     placeholder="https://..."

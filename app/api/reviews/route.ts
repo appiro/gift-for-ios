@@ -125,6 +125,7 @@ export async function POST(request: NextRequest) {
       author_icon: profile?.icon_url ?? '/icons/cat.png',
       product_id: body.productId ?? null,
       product_url: body.productUrl ?? null,
+      rakuten_url: body.rakutenUrl ?? null,
       status: 'published',
     })
     .select()
