@@ -17,7 +17,6 @@ export default function Header() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showHint, setShowHint] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -122,54 +121,22 @@ export default function Header() {
         {/* Right Actions */}
         <div className="flex items-center gap-2 md:gap-5 text-sm font-medium">
           {/* Hint */}
-          <div className="relative">
-            <button
-              onClick={() => setShowHint(!showHint)}
-              className={`transition-colors flex items-center justify-center w-9 h-9 rounded-full hover:bg-background-soft ${showHint ? 'text-yellow-500 bg-background-soft' : 'text-text-sub hover:text-yellow-500'}`}
-              title="使い方"
+          <Link href="/guide"
+            className="transition-colors flex items-center justify-center w-9 h-9 rounded-full hover:bg-background-soft text-text-sub hover:text-yellow-500"
+            title="使い方ガイド"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M2 6a6 6 0 1 1 10.174 4.31c-.203.196-.359.4-.453.619l-.762 1.769A.5.5 0 0 1 10.5 13h-5a.5.5 0 0 1-.46-.302l-.761-1.77a2 2 0 0 0-.453-.618A5.98 5.98 0 0 1 2 6m3 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1l-.224.447a1 1 0 0 1-.894.553H6.618a1 1 0 0 1-.894-.553L5.5 15a.5.5 0 0 1-.5-.5"/>
+            </svg>
+          </Link>
+          {isAdmin && (
+            <Link href="/admin"
+              className="transition-colors flex items-center justify-center w-9 h-9 rounded-full hover:bg-background-soft"
+              title="管理画面"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M2 6a6 6 0 1 1 10.174 4.31c-.203.196-.359.4-.453.619l-.762 1.769A.5.5 0 0 1 10.5 13h-5a.5.5 0 0 1-.46-.302l-.761-1.77a2 2 0 0 0-.453-.618A5.98 5.98 0 0 1 2 6m3 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1l-.224.447a1 1 0 0 1-.894.553H6.618a1 1 0 0 1-.894-.553L5.5 15a.5.5 0 0 1-.5-.5"/>
-              </svg>
-            </button>
-            {showHint && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowHint(false)} />
-                <div className="absolute top-full right-0 mt-2 w-72 bg-white border border-border-light rounded-2xl shadow-2xl z-50 p-4 space-y-3">
-                  <p className="text-sm font-bold text-text-main">Gift forの使い方</p>
-                  <div className="space-y-2.5 text-xs text-text-sub leading-relaxed">
-                    <div className="flex gap-2">
-                      <span className="text-primary font-bold flex-shrink-0">🎁</span>
-                      <p><span className="font-bold text-text-main">口コミを書く</span>：プレゼントした（もらった）体験を投稿。写真・商品名・予算・エピソードを記録できます。</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="flex-shrink-0">📚</span>
-                      <p><span className="font-bold text-text-main">まとめ投稿</span>：複数の口コミをまとめてリストにできます。「誕生日おすすめ3選」など。</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="flex-shrink-0">🔖</span>
-                      <p><span className="font-bold text-text-main">欲しい！／贈りたい！</span>：気になる投稿にリアクションして保存できます。</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="flex-shrink-0">🔍</span>
-                      <p><span className="font-bold text-text-main">絞り込み</span>：シーン・関係・カテゴリのタブから探せます。キーワード検索も可能。</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="flex-shrink-0">👤</span>
-                      <p><span className="font-bold text-text-main">マイページ</span>：投稿の公開・非公開の管理、アイコンや名前の変更ができます。</p>
-                    </div>
-                  </div>
-                  {isAdmin && (
-                    <Link href="/admin" onClick={() => setShowHint(false)}
-                      className="flex items-center gap-2 mt-1 pt-3 border-t border-border-light text-xs font-bold text-text-sub hover:text-primary transition-colors">
-                      <img src="/icons/cat.png" className="w-4 h-4 object-contain" alt="" />
-                      管理画面へ
-                    </Link>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
+              <img src="/icons/cat.png" className="w-5 h-5 object-contain opacity-60 hover:opacity-100 transition-opacity" alt="管理画面" />
+            </Link>
+          )}
 
           {/* Theme Picker */}
           <div className="relative">
