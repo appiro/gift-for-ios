@@ -5,6 +5,7 @@ const APP_SHELL = [
   '/',
   '/likes',
   '/lists',
+  '/offline',
   '/icons/cat.png',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
@@ -61,7 +62,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ページナビゲーション → Stale While Revalidate
+  // ページナビゲーション → Stale While Revalidate（オフライン時は /offline にフォールバック）
   if (request.mode === 'navigate') {
     event.respondWith(
       caches.match(request).then((cached) => {
@@ -71,7 +72,7 @@ self.addEventListener('fetch', (event) => {
             caches.open(CACHE_NAME).then((c) => c.put(request, clone));
           }
           return res;
-        });
+        }).catch(() => caches.match('/offline'));
         return cached || network;
       })
     );
