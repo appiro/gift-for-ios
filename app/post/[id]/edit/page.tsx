@@ -36,6 +36,9 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
     priceCategory: '',
     productUrl: '',
     rakutenUrl: '',
+    rakutenImageUrl: '',
+    rakutenItemName: '',
+    rakutenItemPrice: 0,
     relationship: [] as string[],
     scene: [] as string[],
     category: [] as string[],
@@ -81,6 +84,9 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
         priceCategory: priceNum,
         productUrl: review.productUrl ?? '',
         rakutenUrl: review.rakutenUrl ?? '',
+        rakutenImageUrl: review.rakutenImageUrl ?? '',
+        rakutenItemName: review.rakutenItemName ?? '',
+        rakutenItemPrice: review.rakutenItemPrice ?? 0,
         relationship: review.relationship ?? [],
         scene: review.scene ?? [],
         category: review.category ?? [],
@@ -119,7 +125,14 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
   const handleBack = () => setStep(prev => prev - 1);
 
   const selectRakutenItem = (item: RakutenItem) => {
-    setFormData(prev => ({ ...prev, rakutenUrl: item.affiliateUrl, productUrl: '' }));
+    setFormData(prev => ({
+      ...prev,
+      rakutenUrl: item.affiliateUrl,
+      rakutenImageUrl: item.mediumImageUrl,
+      rakutenItemName: item.itemName,
+      rakutenItemPrice: item.itemPrice,
+      productUrl: '',
+    }));
     setShowCustomUrl(false);
   };
 
@@ -180,6 +193,9 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
         price: priceUnknown ? '不明' : `〜${Number(formData.priceCategory).toLocaleString()}円`,
         productUrl: formData.productUrl || null,
         rakutenUrl: formData.rakutenUrl || null,
+        rakutenImageUrl: formData.rakutenImageUrl || null,
+        rakutenItemName: formData.rakutenItemName || null,
+        rakutenItemPrice: formData.rakutenItemPrice || null,
         gender: formData.gender,
         ageGroup: formData.ageGroup,
         relationship: formData.relationship,

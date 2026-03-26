@@ -7,7 +7,6 @@ import { WantButton, GiftButton } from '@/components/AnimatedActionButtons';
 import { createClient } from '@/lib/supabase/client';
 import type { Review } from '@/lib/types';
 import { rakutenAffiliateUrl, rakutenSearchUrl } from '@/lib/rakuten';
-import type { RakutenItem } from '@/app/api/rakuten/search/route';
 
 interface Comment {
   id: string;
@@ -58,7 +57,7 @@ export default function PostDetail({
   const [replyText, setReplyText] = useState('');
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
   const [ngError, setNgError] = useState('');
-  const [rakutenProduct, setRakutenProduct] = useState<RakutenItem | null>(null);
+  const [rakutenProduct, setRakutenProduct] = useState<Pick<RakutenItem, 'itemName' | 'itemPrice' | 'mediumImageUrl' | 'shopName'> | null>(null);
 
   useEffect(() => {
     // Load review
@@ -66,10 +65,13 @@ export default function PostDetail({
       .then((res) => (res.ok ? res.json() : null))
       .then((data: Review | null) => {
         setReview(data);
-        if (data?.productName) {
-          fetch(`/api/rakuten/search?q=${encodeURIComponent(data.productName)}`)
-            .then((r) => r.ok ? r.json() : [])
-            .then((items: RakutenItem[]) => { if (items[0]) setRakutenProduct(items[0]); });
+        if (data?.rakutenItemName) {
+          setRakutenProduct({
+            itemName: data.rakutenItemName,
+            itemPrice: data.rakutenItemPrice ?? 0,
+            mediumImageUrl: data.rakutenImageUrl ?? '',
+            shopName: '',
+          });
         }
       })
       .finally(() => setLoading(false));

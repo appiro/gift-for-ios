@@ -36,6 +36,9 @@ export default function PostPage() {
     priceCategory: '',
     productUrl: '',
     rakutenUrl: '',
+    rakutenImageUrl: '',
+    rakutenItemName: '',
+    rakutenItemPrice: 0,
     relationship: [] as string[],
     scene: [] as string[],
     category: [] as string[],
@@ -118,12 +121,19 @@ export default function PostPage() {
   const handleBack = () => setStep(prev => prev - 1);
 
   const selectRakutenItem = (item: RakutenItem) => {
-    setFormData(prev => ({ ...prev, rakutenUrl: item.affiliateUrl, productUrl: '' }));
+    setFormData(prev => ({
+      ...prev,
+      rakutenUrl: item.affiliateUrl,
+      rakutenImageUrl: item.mediumImageUrl,
+      rakutenItemName: item.itemName,
+      rakutenItemPrice: item.itemPrice,
+      productUrl: '',
+    }));
     setShowCustomUrl(false);
   };
 
   const clearRakutenSelection = () => {
-    setFormData(prev => ({ ...prev, rakutenUrl: '' }));
+    setFormData(prev => ({ ...prev, rakutenUrl: '', rakutenImageUrl: '', rakutenItemName: '', rakutenItemPrice: 0 }));
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
@@ -173,13 +183,16 @@ export default function PostPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: reviewType === 'received'
-            ? `${formData.relationship[0] ?? formData.gender}からもらったギフト`
-            : `${formData.relationship[0] ?? formData.gender}へのギフト`,
+          title: formData.brandName
+            ? `${formData.brandName}　${formData.productName}`
+            : formData.productName,
           productName: formData.productName,
           productId: formData.productId || null,
           productUrl: formData.productUrl || null,
           rakutenUrl: formData.rakutenUrl || null,
+          rakutenImageUrl: formData.rakutenImageUrl || null,
+          rakutenItemName: formData.rakutenItemName || null,
+          rakutenItemPrice: formData.rakutenItemPrice || null,
           price: priceUnknown ? '不明' : `〜${Number(formData.priceCategory).toLocaleString()}円`,
           imageUrl: uploadedUrls[0] ?? '',
           images: uploadedUrls,

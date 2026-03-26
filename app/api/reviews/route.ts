@@ -26,6 +26,9 @@ function toReview(row: Record<string, unknown>) {
     productUrl: row.product_url,
     amazonUrl: row.amazon_url,
     rakutenUrl: row.rakuten_url,
+    rakutenImageUrl: row.rakuten_image_url,
+    rakutenItemName: row.rakuten_item_name,
+    rakutenItemPrice: row.rakuten_item_price,
     referencePrice: row.reference_price,
   };
 }
@@ -126,6 +129,9 @@ export async function POST(request: NextRequest) {
       product_id: body.productId ?? null,
       product_url: body.productUrl ?? null,
       rakuten_url: body.rakutenUrl ?? null,
+      rakuten_image_url: body.rakutenImageUrl ?? null,
+      rakuten_item_name: body.rakutenItemName ?? null,
+      rakuten_item_price: body.rakutenItemPrice ?? null,
       status: 'published',
     })
     .select()

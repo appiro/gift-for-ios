@@ -25,6 +25,9 @@ function toReview(row: Record<string, unknown>) {
     productUrl: row.product_url,
     amazonUrl: row.amazon_url,
     rakutenUrl: row.rakuten_url,
+    rakutenImageUrl: row.rakuten_image_url,
+    rakutenItemName: row.rakuten_item_name,
+    rakutenItemPrice: row.rakuten_item_price,
     referencePrice: row.reference_price,
   };
 }
@@ -84,6 +87,10 @@ export async function PATCH(
   if (body.scene !== undefined) updates.scene = body.scene;
   if (body.category !== undefined) updates.category = body.category;
   if (body.productUrl !== undefined) updates.product_url = body.productUrl;
+  if (body.rakutenUrl !== undefined) updates.rakuten_url = body.rakutenUrl;
+  if (body.rakutenImageUrl !== undefined) updates.rakuten_image_url = body.rakutenImageUrl;
+  if (body.rakutenItemName !== undefined) updates.rakuten_item_name = body.rakutenItemName;
+  if (body.rakutenItemPrice !== undefined) updates.rakuten_item_price = body.rakutenItemPrice;
   if (body.images !== undefined) updates.images = body.images;
   if (body.imageUrl !== undefined) updates.image_url = body.imageUrl;
   if (body.priceCategory !== undefined) {

@@ -21,6 +21,9 @@ export interface Review {
   productUrl?: string;
   amazonUrl?: string;
   rakutenUrl?: string;
+  rakutenImageUrl?: string;
+  rakutenItemName?: string;
+  rakutenItemPrice?: number;
   referencePrice?: string;
 }
 
