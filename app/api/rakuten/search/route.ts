@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server';
+import https from 'node:https';
 
 const APPLICATION_ID = process.env.RAKUTEN_APPLICATION_ID ?? '';
 const ACCESS_KEY = process.env.RAKUTEN_ACCESS_KEY ?? '';
@@ -12,12 +13,27 @@ export interface RakutenItem {
   shopName: string;
 }
 
+function httpsGet(url: string, headers: Record<string, string>): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    https.get(
+      { hostname: parsed.hostname, path: parsed.pathname + parsed.search, headers },
+      (res) => {
+        let body = '';
+        res.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+        res.on('end', () => resolve(body));
+      }
+    ).on('error', reject);
+  });
+}
+
 export async function GET(req: NextRequest) {
   const keyword = req.nextUrl.searchParams.get('q');
   if (!keyword) return Response.json([], { status: 200 });
 
   const params = new URLSearchParams({
-    applicationId: ACCESS_KEY,
+    applicationId: APPLICATION_ID,
+    accessKey: ACCESS_KEY,
     affiliateId: AFFILIATE_ID,
     keyword,
     hits: '8',
@@ -25,24 +41,22 @@ export async function GET(req: NextRequest) {
     formatVersion: '2',
   });
 
-  const res = await fetch(
-    `https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706?${params}`,
-    { cache: 'no-store' }
-  );
-
-  if (!res.ok) {
-    const errBody = await res.text();
-    return Response.json({ error: errBody, status: res.status }, { status: 200 });
+  try {
+    const body = await httpsGet(
+      `https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20220601?${params}`,
+      { Origin: 'https://giftfor.info' }
+    );
+    const json = JSON.parse(body) as { Items?: { itemName: string; itemPrice: number; affiliateUrl: string; mediumImageUrls: string[]; shopName: string }[]; errors?: unknown };
+    if (json.errors) return Response.json({ error: body }, { status: 200 });
+    const items: RakutenItem[] = (json.Items ?? []).map((item) => ({
+      itemName: item.itemName,
+      itemPrice: item.itemPrice,
+      affiliateUrl: item.affiliateUrl,
+      mediumImageUrl: item.mediumImageUrls?.[0] ?? '',
+      shopName: item.shopName,
+    }));
+    return Response.json(items);
+  } catch {
+    return Response.json([], { status: 200 });
   }
-
-  const json = await res.json() as { Items?: { itemName: string; itemPrice: number; affiliateUrl: string; mediumImageUrls: { imageUrl: string }[]; shopName: string }[] };
-  const items: RakutenItem[] = (json.Items ?? []).map((item) => ({
-    itemName: item.itemName,
-    itemPrice: item.itemPrice,
-    affiliateUrl: item.affiliateUrl,
-    mediumImageUrl: item.mediumImageUrls?.[0]?.imageUrl ?? '',
-    shopName: item.shopName,
-  }));
-
-  return Response.json(items);
 }
