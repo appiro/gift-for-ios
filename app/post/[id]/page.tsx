@@ -7,6 +7,7 @@ import { WantButton, GiftButton } from '@/components/AnimatedActionButtons';
 import { createClient } from '@/lib/supabase/client';
 import type { Review } from '@/lib/types';
 import { rakutenAffiliateUrl, rakutenSearchUrl } from '@/lib/rakuten';
+import type { RakutenItem } from '@/app/api/rakuten/search/route';
 
 interface Comment {
   id: string;
@@ -57,12 +58,20 @@ export default function PostDetail({
   const [replyText, setReplyText] = useState('');
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
   const [ngError, setNgError] = useState('');
+  const [rakutenProduct, setRakutenProduct] = useState<RakutenItem | null>(null);
 
   useEffect(() => {
     // Load review
     fetch(`/api/reviews/${id}`)
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: Review | null) => setReview(data))
+      .then((data: Review | null) => {
+        setReview(data);
+        if (data?.productName) {
+          fetch(`/api/rakuten/search?q=${encodeURIComponent(data.productName)}`)
+            .then((r) => r.ok ? r.json() : [])
+            .then((items: RakutenItem[]) => { if (items[0]) setRakutenProduct(items[0]); });
+        }
+      })
       .finally(() => setLoading(false));
 
     // Load vote state
@@ -322,21 +331,37 @@ export default function PostDetail({
               </div>
 
               {/* Product Card */}
-              <div className="border border-border-light rounded-2xl p-4 bg-white">
-                <span className="text-xs font-bold text-primary block mb-3">ネットショップ</span>
-                <h3 className="text-sm font-bold text-text-main mb-3 line-clamp-1">{review.productName}</h3>
-                {review.referencePrice && <p className="text-xs text-text-sub mb-3">参考価格: {review.referencePrice}</p>}
-                <div className="flex flex-wrap items-center gap-2">
+              <div className="border border-border-light rounded-2xl overflow-hidden bg-white">
+                <div className="px-4 pt-4 pb-2">
+                  <span className="text-xs font-bold text-primary">ネットショップ</span>
+                </div>
+                {rakutenProduct ? (
+                  <div className="flex gap-3 px-4 pb-4">
+                    {rakutenProduct.mediumImageUrl && (
+                      <img src={rakutenProduct.mediumImageUrl} alt={rakutenProduct.itemName} className="w-20 h-20 object-cover rounded-xl flex-shrink-0 border border-border-light" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-text-main line-clamp-2 mb-1">{rakutenProduct.itemName}</p>
+                      <p className="text-sm font-bold text-red-500 mb-1">¥{rakutenProduct.itemPrice.toLocaleString()}</p>
+                      <p className="text-[10px] text-text-sub">{rakutenProduct.shopName}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="px-4 pb-4">
+                    <p className="text-sm font-bold text-text-main line-clamp-1">{review.productName}</p>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2 px-4 pb-4">
                   {review.productUrl && (
-                    <a href={review.productUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[120px] py-1.5 bg-primary text-white rounded-lg text-xs font-bold text-center hover:opacity-90">ショップで見る</a>
+                    <a href={review.productUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[120px] py-2 bg-primary text-white rounded-xl text-xs font-bold text-center hover:opacity-90">ショップで見る</a>
                   )}
                   {review.amazonUrl && (
-                    <a href={review.amazonUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[120px] py-1.5 bg-orange-500 text-white rounded-lg text-xs font-bold text-center hover:opacity-90">Amazonで見る</a>
+                    <a href={review.amazonUrl} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[120px] py-2 bg-orange-500 text-white rounded-xl text-xs font-bold text-center hover:opacity-90">Amazonで見る</a>
                   )}
                   {review.rakutenUrl ? (
-                    <a href={rakutenAffiliateUrl(review.rakutenUrl)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[120px] py-1.5 bg-red-500 text-white rounded-lg text-xs font-bold text-center hover:opacity-90">楽天で見る</a>
+                    <a href={rakutenAffiliateUrl(review.rakutenUrl)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[120px] py-2 bg-red-500 text-white rounded-xl text-xs font-bold text-center hover:opacity-90">楽天で見る</a>
                   ) : (
-                    <a href={rakutenSearchUrl(review.productName)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[120px] py-1.5 bg-red-500 text-white rounded-lg text-xs font-bold text-center hover:opacity-90">楽天で探す</a>
+                    <a href={rakutenSearchUrl(review.productName)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[120px] py-2 bg-red-500 text-white rounded-xl text-xs font-bold text-center hover:opacity-90">楽天で探す</a>
                   )}
                 </div>
               </div>
