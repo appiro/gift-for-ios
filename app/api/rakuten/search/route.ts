@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 
-const APPLICATION_ID = process.env.RAKUTEN_APPLICATION_ID!;
+const APPLICATION_ID = (process.env.RAKUTEN_APPLICATION_ID ?? '').replace(/-/g, '');
 const AFFILIATE_ID = '523fa562.2be79479.523fa563.3c618458';
 
 export interface RakutenItem {
