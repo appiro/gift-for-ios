@@ -14,6 +14,7 @@ export default function Header() {
   const [themePickerOpen, setThemePickerOpen] = useState(false);
   const [currentTheme, setCurrentTheme] = useState('default');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showHint, setShowHint] = useState(false);
@@ -27,6 +28,8 @@ export default function Header() {
           .then((data: { is_read: boolean }[]) => {
             setUnreadCount(Array.isArray(data) ? data.filter((n) => !n.is_read).length : 0);
           });
+        supabase.from('profiles').select('role').eq('id', user.id).single()
+          .then(({ data }) => setIsAdmin(data?.role === 'admin'));
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -156,6 +159,13 @@ export default function Header() {
                       <p><span className="font-bold text-text-main">マイページ</span>：投稿の公開・非公開の管理、アイコンや名前の変更ができます。</p>
                     </div>
                   </div>
+                  {isAdmin && (
+                    <Link href="/admin" onClick={() => setShowHint(false)}
+                      className="flex items-center gap-2 mt-1 pt-3 border-t border-border-light text-xs font-bold text-text-sub hover:text-primary transition-colors">
+                      <img src="/icons/cat.png" className="w-4 h-4 object-contain" alt="" />
+                      管理画面へ
+                    </Link>
+                  )}
                 </div>
               </>
             )}
