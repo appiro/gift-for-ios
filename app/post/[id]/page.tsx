@@ -309,11 +309,12 @@ export default function PostDetail({
                   )}
                 </div>
 
-                <p className="text-xs text-text-sub mb-1">{review.title}</p>
-                {review.brandName && (
-                  <p className="text-sm font-medium text-text-sub mb-1">{review.brandName}</p>
-                )}
-                <h1 className="text-2xl font-bold text-text-main leading-tight mb-4">{review.productName}</h1>
+                <div className="flex items-center gap-2 mb-1">
+                  {review.brandName && <span className="text-xs text-text-sub">{review.brandName}</span>}
+                  {review.brandName && <span className="text-xs text-text-sub">·</span>}
+                  <span className="text-xs text-text-sub">{review.productName}</span>
+                </div>
+                <h1 className="text-2xl font-bold text-text-main leading-tight mb-4">{review.title}</h1>
 
                 <div className="flex flex-wrap gap-2">
                   <span className="px-3 py-1 bg-background-soft border border-border-light rounded-full text-xs text-text-sub">{review.price}</span>
