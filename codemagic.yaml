@@ -5,15 +5,18 @@ workflows:
     integrations:
       app_store_connect: giftfor
     environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: info.giftfor
       xcode: latest
       cocoapods: default
     scripts:
       - name: Set up keychain
         script: keychain initialize
       - name: Add certificates to keychain
-        script: keychain add-certificates --certificate-name gift_for_distribution
+        script: keychain add-certificates
       - name: Set up code signing
-        script: xcode-project use-profiles --profile-name gift_for_appstore
+        script: xcode-project use-profiles
       - name: Install CocoaPods
         script: cd src && pod install
       - name: Build IPA
