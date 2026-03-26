@@ -26,10 +26,13 @@ export async function GET(req: NextRequest) {
 
   const res = await fetch(
     `https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706?${params}`,
-    { next: { revalidate: 60 } }
+    { cache: 'no-store' }
   );
 
-  if (!res.ok) return Response.json([], { status: 200 });
+  if (!res.ok) {
+    const errBody = await res.text();
+    return Response.json({ error: errBody, status: res.status }, { status: 200 });
+  }
 
   const json = await res.json() as { Items?: { itemName: string; itemPrice: number; affiliateUrl: string; mediumImageUrls: { imageUrl: string }[]; shopName: string }[] };
   const items: RakutenItem[] = (json.Items ?? []).map((item) => ({
