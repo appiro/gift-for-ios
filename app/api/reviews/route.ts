@@ -110,6 +110,8 @@ export async function POST(request: NextRequest) {
     .eq('id', user.id)
     .single();
 
+  console.log('[POST /api/reviews] brandName received:', body.brandName);
+
   const { data, error } = await supabase
     .from('reviews')
     .insert({
