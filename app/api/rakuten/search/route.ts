@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   const res = await fetch(
     `https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706?${params}`,
-    { cache: 'no-store', headers: { 'Authorization': `ESA ${ACCESS_KEY}` } }
+    { cache: 'no-store', headers: { 'Authorization': `Bearer ${ACCESS_KEY}` } }
   );
 
   if (!res.ok) {
