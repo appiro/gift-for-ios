@@ -66,7 +66,7 @@ export default function Header() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border-light bg-background-card">
+    <header className="sticky top-0 z-50 w-full border-b border-border-light bg-background-card" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       {/* Top Row */}
       <div className="flex items-center justify-between px-6 py-3 max-w-7xl mx-auto">
         {/* Logo */}
