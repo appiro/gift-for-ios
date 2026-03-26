@@ -4,10 +4,14 @@ export default function ReviewCard({
   id = '1',
   imageUrl = 'https://placehold.co/400x400/FFB6B9/FFF?text=Gift',
   title = '職場の先輩の退職祝い',
-  productName = 'Jo Malone ボディクリーム',
   price = '〜5,000円',
   wantCount = 0,
   giftCount = 0,
+  relationship = [],
+  scene = [],
+  category = [],
+  gender,
+  ageGroup,
   authorId,
   authorName,
   authorIcon,
@@ -20,12 +24,25 @@ export default function ReviewCard({
   likes?: number;
   wantCount?: number;
   giftCount?: number;
+  relationship?: string[];
+  scene?: string[];
+  category?: string[];
+  gender?: string;
+  ageGroup?: string;
   authorId?: string;
   authorName?: string;
   authorIcon?: string;
   [key: string]: unknown;
 }) {
   const saves = wantCount + giftCount;
+
+  const conditions = [
+    ...(relationship ?? []),
+    ...(scene ?? []),
+    ...(category ?? []),
+    ...(gender ? [gender] : []),
+    ...(ageGroup ? [ageGroup] : []),
+  ].filter(Boolean);
 
   return (
     <div className="flex flex-col gap-2">
@@ -48,15 +65,12 @@ export default function ReviewCard({
       </Link>
 
       <div className="px-1">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-primary text-white shadow-sm border border-primary/20 whitespace-nowrap flex-shrink-0 tracking-wide">
-            {price}
-          </span>
-          <span className="text-[10px] text-text-sub line-clamp-1">{title}</span>
-        </div>
+        <p className="text-[10px] text-text-sub line-clamp-1 mb-0.5">
+          {[price, ...conditions].filter(Boolean).join('  ·  ')}
+        </p>
         <Link href={`/post/${id}?img=${encodeURIComponent(imageUrl)}`}>
           <h3 className="text-sm font-bold text-text-main line-clamp-2 leading-snug hover:text-primary transition-colors">
-            {productName}
+            {title}
           </h3>
         </Link>
 
