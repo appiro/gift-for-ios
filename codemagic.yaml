@@ -15,7 +15,11 @@ workflows:
       - name: Fetch signing files
         script: |
           echo "$CERTIFICATE_PRIVATE_KEY" | base64 --decode > /tmp/certificate_key.pem
+          echo "$APP_STORE_CONNECT_PRIVATE_KEY" | base64 --decode > /tmp/asc_key.p8
           app-store-connect fetch-signing-files info.giftfor \
+            --issuer-id "88cb163c-5d50-4791-8ed6-e869b4c7815a" \
+            --key-id "P957U9932H" \
+            --private-key @file:/tmp/asc_key.p8 \
             --platform IOS \
             --type IOS_APP_STORE \
             --certificate-key @file:/tmp/certificate_key.pem \
