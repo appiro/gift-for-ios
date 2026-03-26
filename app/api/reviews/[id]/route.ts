@@ -113,3 +113,32 @@ export async function PATCH(
 
   return Response.json(toReview(data as Record<string, unknown>));
 }
+
+export async function DELETE(
+  _req: NextRequest,
+  ctx: RouteContext<'/api/reviews/[id]'>
+) {
+  const { id } = await ctx.params;
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { data: existing } = await supabase
+    .from('reviews')
+    .select('user_id')
+    .eq('id', id)
+    .single();
+  if (!existing || existing.user_id !== user.id) {
+    return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const { error } = await supabase
+    .from('reviews')
+    .delete()
+    .eq('id', id);
+
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+
+  return Response.json({ ok: true });
+}

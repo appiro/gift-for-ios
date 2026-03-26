@@ -118,22 +118,16 @@ export default function MyPage() {
   const discardEdit = () => { setDraftStatuses({}); closeModal(); };
 
   const deleteReview = async (id: string) => {
-    await fetch('/api/user/reviews', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, status: 'trash' }),
-    });
-    setApiReviews((prev) => prev.map(r => r.id === id ? { ...r, status: 'trash' as ReviewStatus } : r));
-    setReviewStatuses((prev) => ({ ...prev, [id]: 'trash' as ReviewStatus }));
-    setDraftStatuses((prev) => ({ ...prev, [id]: 'trash' as ReviewStatus }));
+    const res = await fetch(`/api/reviews/${id}`, { method: 'DELETE' });
+    if (!res.ok) { alert('削除に失敗しました'); return; }
+    setApiReviews((prev) => prev.filter((r) => r.id !== id));
+    setReviewStatuses((prev) => { const next = { ...prev }; delete next[id]; return next; });
+    setDraftStatuses((prev) => { const next = { ...prev }; delete next[id]; return next; });
   };
 
   const permanentDelete = async (id: string) => {
-    await fetch('/api/user/reviews', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    });
+    const res = await fetch(`/api/reviews/${id}`, { method: 'DELETE' });
+    if (!res.ok) { alert('削除に失敗しました'); return; }
     setApiReviews((prev) => prev.filter((r) => r.id !== id));
     setReviewStatuses((prev) => { const next = { ...prev }; delete next[id]; return next; });
     setDraftStatuses((prev) => { const next = { ...prev }; delete next[id]; return next; });

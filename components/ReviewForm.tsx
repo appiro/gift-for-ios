@@ -73,6 +73,35 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
     return next;
   });
 
+  const [showInterruptModal, setShowInterruptModal] = useState(false);
+  const DRAFT_KEY = 'review-draft';
+
+  const saveDraft = () => {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ formData, priceUnknown, reviewType }));
+    setShowInterruptModal(false);
+    router.push('/');
+  };
+
+  const discardAndLeave = () => {
+    localStorage.removeItem(DRAFT_KEY);
+    setShowInterruptModal(false);
+    router.push('/');
+  };
+
+  // Load draft on create mode mount
+  useEffect(() => {
+    if (mode !== 'create') return;
+    const saved = localStorage.getItem(DRAFT_KEY);
+    if (!saved) return;
+    try {
+      const draft = JSON.parse(saved) as { formData: typeof formData; priceUnknown: boolean; reviewType: 'gave' | 'received' };
+      setFormData(draft.formData);
+      setPriceUnknown(draft.priceUnknown);
+      setReviewType(draft.reviewType);
+      localStorage.removeItem(DRAFT_KEY);
+    } catch { /* ignore */ }
+  }, [mode]);
+
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -733,6 +762,54 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
 
         </div>
       </div>
+
+      {/* 中断ボタン（右下固定） */}
+      <button
+        onClick={() => setShowInterruptModal(true)}
+        className="fixed bottom-24 md:bottom-8 right-4 md:right-8 z-40 flex items-center gap-1.5 px-4 py-2 bg-white border border-border-light rounded-full text-xs font-bold text-text-sub shadow-md hover:border-red-300 hover:text-red-400 transition-all"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+          <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/>
+        </svg>
+        中断する
+      </button>
+
+      {/* 中断モーダル */}
+      {showInterruptModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowInterruptModal(false)} />
+          <div className="relative w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden">
+            <div className="px-6 pt-6 pb-2">
+              <div className="w-10 h-1 bg-border-light rounded-full mx-auto mb-5 sm:hidden" />
+              <h2 className="text-base font-bold text-text-main mb-1">投稿を中断しますか？</h2>
+              <p className="text-xs text-text-sub mb-5">入力した内容はどうしますか？</p>
+            </div>
+            <div className="px-4 pb-6 space-y-2">
+              <button
+                onClick={() => setShowInterruptModal(false)}
+                className="w-full py-3.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary-hover transition-colors"
+              >
+                続けて投稿する
+              </button>
+              {mode === 'create' && (
+                <button
+                  onClick={saveDraft}
+                  className="w-full py-3.5 rounded-xl bg-background-soft border border-border-light text-sm font-bold text-text-main hover:border-primary hover:text-primary transition-colors"
+                >
+                  下書きに保存する
+                </button>
+              )}
+              <button
+                onClick={discardAndLeave}
+                className="w-full py-3.5 rounded-xl text-sm font-bold text-red-400 hover:text-red-600 transition-colors"
+              >
+                投稿をやめる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editingFile && (
         <PhotoEditor
