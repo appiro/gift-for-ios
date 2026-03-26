@@ -76,8 +76,17 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
 
       if (review.productUrl) setShowCustomUrl(true);
 
+      // Restore brand name: use stored value or parse from title (for old reviews)
+      let brandName = review.brandName ?? '';
+      if (!brandName && review.title?.includes('　')) {
+        const parts = review.title.split('　');
+        if (parts.length === 2 && parts[1] === review.productName) {
+          brandName = parts[0];
+        }
+      }
+
       setFormData({
-        brandName: review.brandName ?? '',
+        brandName,
         productName: review.productName ?? '',
         gender: review.gender ?? '',
         ageGroup: review.ageGroup ?? '',
