@@ -77,7 +77,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
       if (review.productUrl) setShowCustomUrl(true);
 
       setFormData({
-        brandName: '',
+        brandName: review.brandName ?? '',
         productName: review.productName ?? '',
         gender: review.gender ?? '',
         ageGroup: review.ageGroup ?? '',
@@ -189,6 +189,10 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        title: formData.brandName
+          ? `${formData.brandName}　${formData.productName}`
+          : formData.productName,
+        brandName: formData.brandName || null,
         productName: formData.productName,
         price: priceUnknown ? '不明' : `〜${Number(formData.priceCategory).toLocaleString()}円`,
         productUrl: formData.productUrl || null,

@@ -5,6 +5,7 @@ function toReview(row: Record<string, unknown>) {
   return {
     id: row.id,
     title: row.title,
+    brandName: row.brand_name,
     productName: row.product_name,
     price: row.price,
     imageUrl: row.image_url,
@@ -80,6 +81,8 @@ export async function PATCH(
   }
 
   const updates: Record<string, unknown> = {};
+  if (body.brandName !== undefined) updates.brand_name = body.brandName;
+  if (body.title !== undefined) updates.title = body.title;
   if (body.productName !== undefined) updates.product_name = body.productName;
   if (body.price !== undefined) updates.price = body.price;
   if (body.episode !== undefined) updates.episode = body.episode;

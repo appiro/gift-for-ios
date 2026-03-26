@@ -186,6 +186,7 @@ export default function PostPage() {
           title: formData.brandName
             ? `${formData.brandName}　${formData.productName}`
             : formData.productName,
+          brandName: formData.brandName || null,
           productName: formData.productName,
           productId: formData.productId || null,
           productUrl: formData.productUrl || null,

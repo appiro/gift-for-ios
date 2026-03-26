@@ -6,6 +6,7 @@ function toReview(row: Record<string, unknown>) {
   return {
     id: row.id,
     title: row.title,
+    brandName: row.brand_name,
     productName: row.product_name,
     price: row.price,
     imageUrl: row.image_url,
@@ -114,6 +115,7 @@ export async function POST(request: NextRequest) {
     .insert({
       user_id: user.id,
       title: body.title,
+      brand_name: body.brandName ?? null,
       product_name: body.productName,
       price: body.price,
       image_url: body.imageUrl,
