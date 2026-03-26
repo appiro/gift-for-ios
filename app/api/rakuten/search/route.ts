@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   if (!keyword) return Response.json([], { status: 200 });
 
   const params = new URLSearchParams({
-    applicationId: APPLICATION_ID,
+    applicationId: ACCESS_KEY,
     affiliateId: AFFILIATE_ID,
     keyword,
     hits: '8',
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   const res = await fetch(
     `https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706?${params}`,
-    { cache: 'no-store', headers: { 'Authorization': `Bearer ${ACCESS_KEY}` } }
+    { cache: 'no-store' }
   );
 
   if (!res.ok) {
