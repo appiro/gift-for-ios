@@ -5,8 +5,6 @@ workflows:
     integrations:
       app_store_connect: giftfor
     environment:
-      groups:
-        - ios_credentials
       xcode: latest
       cocoapods: default
     scripts:
