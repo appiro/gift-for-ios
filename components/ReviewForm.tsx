@@ -33,6 +33,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
   const [editingFile, setEditingFile] = useState<{ file: File; index: number } | null>(null);
   const [previewingFile, setPreviewingFile] = useState<{ file: File; previewUrl: string; index: number } | null>(null);
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const [imageFiles, setImageFiles] = useState<(File | null)[]>([null, null]);
   const [imagePreviews, setImagePreviews] = useState<(string | null)[]>([null, null]);
@@ -93,6 +94,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
   };
 
   useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { setConfirmingDelete(false); }, [viewingIndex]);
 
   // Load draft on create mode mount
   useEffect(() => {
@@ -295,6 +297,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
     if (viewingIndex === null) return;
     removeImage(viewingIndex);
     setViewingIndex(null);
+    setConfirmingDelete(false);
   };
 
   const handleEditorConfirm = async (edited: File) => {
@@ -938,8 +941,13 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
             </div>
             {/* Header */}
             <div className="flex items-center justify-between px-4 h-11 flex-shrink-0">
-              <span className="text-sm font-bold text-gray-900">写真を選択</span>
-              <button onClick={() => setViewingIndex(null)} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">キャンセル</button>
+              <span className="text-sm font-bold text-gray-900">
+                {confirmingDelete ? '写真を削除しますか？' : '写真を選択'}
+              </span>
+              <button
+                onClick={() => { setViewingIndex(null); setConfirmingDelete(false); }}
+                className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              >キャンセル</button>
             </div>
             {/* Current photo */}
             <div className="mx-4 mb-3 rounded-2xl overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0"
@@ -950,28 +958,44 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
                 style={{ maxWidth: '100%', maxHeight: 320, objectFit: 'contain', display: 'block' }}
               />
             </div>
-            {/* Replace button */}
-            <div className="px-4 mb-2 flex-shrink-0">
-              <button onClick={handleViewingReplace}
-                className="w-full py-3 rounded-2xl border-2 border-primary/30 text-primary text-sm font-bold hover:bg-primary/5 transition-colors flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
-                  <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
-                  <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708z"/>
-                </svg>
-                別の写真を選ぶ
-              </button>
-            </div>
-            {/* Edit + Delete */}
-            <div className="flex items-center gap-2 px-4 pb-4 flex-shrink-0">
-              <button onClick={handleViewingDelete}
-                className="flex-1 py-3 rounded-2xl border-2 border-red-100 text-red-400 text-sm font-bold hover:bg-red-50 transition-colors">
-                削除
-              </button>
-              <button onClick={handleViewingEdit} disabled={compressing}
-                className="flex-[2] py-3 rounded-2xl bg-primary text-white text-sm font-bold disabled:opacity-50 hover:opacity-90 transition-opacity">
-                {compressing ? '読み込み中...' : '編集'}
-              </button>
-            </div>
+
+            {confirmingDelete ? (
+              /* Delete confirmation */
+              <div className="flex items-center gap-2 px-4 pb-4 flex-shrink-0">
+                <button onClick={() => setConfirmingDelete(false)}
+                  className="flex-1 py-3 rounded-2xl border-2 border-gray-200 text-gray-600 text-sm font-bold hover:bg-gray-50 transition-colors">
+                  戻る
+                </button>
+                <button onClick={handleViewingDelete}
+                  className="flex-[2] py-3 rounded-2xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors">
+                  削除する
+                </button>
+              </div>
+            ) : (
+              /* Normal actions */
+              <>
+                <div className="px-4 mb-2 flex-shrink-0">
+                  <button onClick={handleViewingReplace}
+                    className="w-full py-3 rounded-2xl border-2 border-primary/30 text-primary text-sm font-bold hover:bg-primary/5 transition-colors flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
+                      <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
+                      <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708z"/>
+                    </svg>
+                    別の写真を選ぶ
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 px-4 pb-4 flex-shrink-0">
+                  <button onClick={() => setConfirmingDelete(true)}
+                    className="flex-1 py-3 rounded-2xl border-2 border-red-100 text-red-400 text-sm font-bold hover:bg-red-50 transition-colors">
+                    削除
+                  </button>
+                  <button onClick={handleViewingEdit} disabled={compressing}
+                    className="flex-[2] py-3 rounded-2xl bg-primary text-white text-sm font-bold disabled:opacity-50 hover:opacity-90 transition-opacity">
+                    {compressing ? '読み込み中...' : '編集'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>,
         document.body
