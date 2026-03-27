@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gift-for-v1';
+const CACHE_NAME = 'gift-for-v2';
 
 // アプリシェル：インストール時にキャッシュするファイル
 const APP_SHELL = [

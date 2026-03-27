@@ -161,7 +161,12 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
 
   const handleScaleChange = (newScale: number) => {
     const clamped = Math.max(minScale, Math.min(minScale * 3, newScale));
-    const { x, y } = clampOffset(offsetX, offsetY, clamped);
+    // Zoom toward the center of the crop box
+    const cx = cropPx / 2;
+    const cy = cropPx / 2;
+    const imgX = (cx - offsetX) / scale;
+    const imgY = (cy - offsetY) / scale;
+    const { x, y } = clampOffset(cx - imgX * clamped, cy - imgY * clamped, clamped);
     setScale(clamped); setOffsetX(x); setOffsetY(y);
   };
 
