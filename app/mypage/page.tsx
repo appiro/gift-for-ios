@@ -704,14 +704,9 @@ export default function MyPage() {
                 {reviews.filter((r) => r.status !== "draft" && r.status !== "trash" && !pendingTrash.has(r.id)).length === 0 && (
                   <p className="text-center text-sm text-text-sub py-10">公開・非公開の口コミがありません</p>
                 )}
-                {pendingTrash.size > 0 && (
-                  <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-100 rounded-xl text-xs text-red-500 font-bold">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/></svg>
-                    {pendingTrash.size}件をゴミ箱に移動します（保存で確定）
-                  </div>
-                )}
+                <AnimatePresence>
                 {reviews.filter((r) => r.status !== "draft" && r.status !== "trash" && !pendingTrash.has(r.id)).map((review) => (
-                  <motion.div key={review.id} layout className="flex items-start gap-3 p-4 bg-background-soft/60 border border-border-light/60 rounded-2xl hover:border-primary/30 transition-colors">
+                  <motion.div key={review.id} layout exit={{ opacity: 0, height: 0, marginBottom: 0, overflow: 'hidden' }} transition={{ duration: 0.22 }} className="flex items-start gap-3 p-4 bg-background-soft/60 border border-border-light/60 rounded-2xl hover:border-primary/30 transition-colors">
                     {/* テキスト情報 */}
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-text-sub mb-0.5 truncate">{review.title}</p>
@@ -747,6 +742,7 @@ export default function MyPage() {
                     </div>
                   </motion.div>
                 ))}
+                </AnimatePresence>
               </div>
 
               {/* Footer */}
@@ -810,11 +806,7 @@ export default function MyPage() {
                         // --- 保存時の確認 ---
                         <>
                           <p className="text-sm font-bold text-text-main mb-1">変更を保存しますか？</p>
-                          <p className="text-xs text-text-sub mb-4">
-                            {pendingTrash.size > 0
-                              ? `${pendingTrash.size}件の口コミがゴミ箱に移動されます。1週間後に自動削除されますが、それ以内なら元に戻せます。`
-                              : 'ステータスの変更が反映されます。'}
-                          </p>
+                          <p className="text-xs text-text-sub mb-4">ステータスの変更が反映されます。</p>
                           <div className="flex gap-3">
                             <button
                               onClick={() => setConfirmMode(null)}
@@ -913,7 +905,7 @@ export default function MyPage() {
                           ? 7 - Math.floor((Date.now() - trashedAt.getTime()) / 86400000)
                           : null;
                         return (
-                          <div className="absolute inset-0 bg-black/50 rounded-2xl flex flex-col items-center justify-center gap-2 z-10 p-2">
+                          <div className="absolute top-0 left-0 right-0 aspect-square overflow-hidden rounded-2xl bg-black/50 flex flex-col items-center justify-center gap-2 z-10 p-2">
                             {daysLeft !== null && (
                               <span className="text-[10px] text-white/80 font-bold">
                                 {daysLeft > 0 ? `${daysLeft}日後に完全削除` : '間もなく削除'}

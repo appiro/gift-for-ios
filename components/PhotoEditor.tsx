@@ -280,7 +280,7 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
             - max 370px wide (sm modal cap)
             - height-aware: calc(100vh - 220px) ensures controls always fit below
             The black bg shows only behind the image itself */}
-        <div className="flex items-center justify-center bg-black flex-shrink-0 relative">
+        <div className="flex items-center justify-center bg-gray-100 flex-shrink-0 relative">
           <div
             ref={cropContainerRef}
             style={{
@@ -325,17 +325,17 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
               {/* Grid lines */}
               {['33.3%', '66.6%'].map(p => (
                 <div key={p}>
-                  <div style={{ position: 'absolute', left: p, top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.18)' }} />
-                  <div style={{ position: 'absolute', top: p, left: 0, right: 0, height: 1, background: 'rgba(255,255,255,0.18)' }} />
+                  <div style={{ position: 'absolute', left: p, top: 0, bottom: 0, width: 1, background: 'rgba(0,0,0,0.1)' }} />
+                  <div style={{ position: 'absolute', top: p, left: 0, right: 0, height: 1, background: 'rgba(0,0,0,0.1)' }} />
                 </div>
               ))}
               {/* Perimeter border */}
-              <div style={{ position: 'absolute', inset: 0, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.55)' }} />
+              <div style={{ position: 'absolute', inset: 0, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.15)' }} />
               {/* Corner handles */}
-              <div style={{ position: 'absolute', top: 0, left: 0, width: 22, height: 22, borderTop: '3px solid white', borderLeft: '3px solid white' }} />
-              <div style={{ position: 'absolute', top: 0, right: 0, width: 22, height: 22, borderTop: '3px solid white', borderRight: '3px solid white' }} />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, width: 22, height: 22, borderBottom: '3px solid white', borderLeft: '3px solid white' }} />
-              <div style={{ position: 'absolute', bottom: 0, right: 0, width: 22, height: 22, borderBottom: '3px solid white', borderRight: '3px solid white' }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, width: 22, height: 22, borderTop: '2.5px solid rgba(0,0,0,0.2)', borderLeft: '2.5px solid rgba(0,0,0,0.2)' }} />
+              <div style={{ position: 'absolute', top: 0, right: 0, width: 22, height: 22, borderTop: '2.5px solid rgba(0,0,0,0.2)', borderRight: '2.5px solid rgba(0,0,0,0.2)' }} />
+              <div style={{ position: 'absolute', bottom: 0, left: 0, width: 22, height: 22, borderBottom: '2.5px solid rgba(0,0,0,0.2)', borderLeft: '2.5px solid rgba(0,0,0,0.2)' }} />
+              <div style={{ position: 'absolute', bottom: 0, right: 0, width: 22, height: 22, borderBottom: '2.5px solid rgba(0,0,0,0.2)', borderRight: '2.5px solid rgba(0,0,0,0.2)' }} />
             </div>
           </div>
 
