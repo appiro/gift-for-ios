@@ -77,26 +77,14 @@ export default function MobileNav() {
       <div className="flex items-center justify-around px-2 py-0.5">
         {items.map((item) => {
           const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
-          if (item.isPost) {
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex flex-col items-center justify-center -mt-3"
-              >
-                <div className="w-12 h-12 rounded-full bg-accent-strong text-white flex items-center justify-center shadow-lg shadow-accent-strong/30 active:scale-95 transition-transform">
-                  {item.icon}
-                </div>
-                <span className="text-[10px] font-bold text-accent-strong mt-0.5">{item.label}</span>
-              </Link>
-            );
-          }
           return (
             <Link
               key={item.href}
               href={item.href}
               className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-3 rounded-xl transition-colors min-w-[52px] ${
-                isActive ? "text-primary" : "text-text-sub"
+                item.isPost
+                  ? isActive ? "text-accent-strong" : "text-text-sub"
+                  : isActive ? "text-primary" : "text-text-sub"
               }`}
             >
               {item.icon}

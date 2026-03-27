@@ -10,6 +10,8 @@ interface SearchContextType {
   clearFilters: () => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
+  filterSheetOpen: boolean;
+  setFilterSheetOpen: (open: boolean) => void;
 }
 
 const SearchContext = createContext<SearchContextType | undefined>(undefined);
@@ -17,6 +19,7 @@ const SearchContext = createContext<SearchContextType | undefined>(undefined);
 export function SearchProvider({ children }: { children: ReactNode }) {
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [searchQuery, setSearchQueryState] = useState('');
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -43,7 +46,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <SearchContext.Provider value={{ activeFilters, addFilter, removeFilter, clearFilters, searchQuery, setSearchQuery }}>
+    <SearchContext.Provider value={{ activeFilters, addFilter, removeFilter, clearFilters, searchQuery, setSearchQuery, filterSheetOpen, setFilterSheetOpen }}>
       {children}
     </SearchContext.Provider>
   );

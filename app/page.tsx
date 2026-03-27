@@ -79,10 +79,9 @@ function applyFilters(reviews: Review[], activeFilters: string[]): Review[] {
 }
 
 export default function Home() {
-  const { activeFilters, addFilter, removeFilter, clearFilters, searchQuery } = useSearch();
+  const { activeFilters, removeFilter, clearFilters, searchQuery, filterSheetOpen, setFilterSheetOpen } = useSearch();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   // 全件取得は初回のみ（フィルタリングはクライアント側で完結）
   useEffect(() => {
@@ -111,41 +110,7 @@ export default function Home() {
       <Sidebar />
 
       <div className="flex-1 flex flex-col">
-        {/* Mobile Quick Filter Bar */}
-        <div className="lg:hidden flex items-center gap-2 overflow-x-auto hide-scrollbar -mx-2 px-2 pb-2 mb-3">
-          <button
-            onClick={() => setFilterSheetOpen(true)}
-            className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold border transition-all ${
-              activeFilters.length > 0
-                ? 'bg-primary text-white border-primary shadow-sm'
-                : 'bg-background-card text-text-sub border-border-light'
-            }`}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5z" />
-            </svg>
-            絞り込み
-            {activeFilters.length > 0 && <span className="bg-white/30 rounded-full px-1">{activeFilters.length}</span>}
-          </button>
-          {['誕生日', 'お礼', '記念日', 'クリスマス', '結婚', '卒業', '就職', 'バレンタイン', '母の日', '父の日'].map((scene) => {
-            const active = activeFilters.includes(`シーン: ${scene}`);
-            return (
-              <button
-                key={scene}
-                onClick={() => active ? removeFilter(`シーン: ${scene}`) : addFilter(`シーン: ${scene}`)}
-                className={`flex-shrink-0 px-3 py-2 rounded-full text-xs font-bold border transition-all ${
-                  active
-                    ? 'bg-primary text-white border-primary'
-                    : 'bg-background-card text-text-sub border-border-light'
-                }`}
-              >
-                {scene}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Active Filters (Chips) - desktop + mobile fallback */}
+        {/* Active Filters (Chips) */}
         <div className="flex items-center flex-wrap gap-2 mb-4 min-h-[28px]">
           <AnimatePresence>
             {activeFilters.map((filter) => (

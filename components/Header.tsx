@@ -8,7 +8,7 @@ import { useSearch } from './SearchProvider';
 import { createClient } from '@/lib/supabase/client';
 
 export default function Header() {
-  const { addFilter, searchQuery, setSearchQuery } = useSearch();
+  const { addFilter, activeFilters, searchQuery, setSearchQuery, setFilterSheetOpen } = useSearch();
   const router = useRouter();
   const supabase = createClient();
   const [themePickerOpen, setThemePickerOpen] = useState(false);
@@ -272,16 +272,18 @@ export default function Header() {
             </button>
           )}
         </div>
-        <Link
-          href="/post"
-          className="flex-shrink-0 w-10 h-10 rounded-full bg-accent-strong text-white flex items-center justify-center shadow-sm active:scale-95 transition-transform"
-          title="口コミを書く"
+        <button
+          onClick={() => setFilterSheetOpen(true)}
+          className={`relative flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center shadow-sm active:scale-95 transition-transform ${activeFilters.length > 0 ? 'bg-primary text-white' : 'bg-background-soft text-text-sub'}`}
+          title="絞り込み"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
-            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5zm1 .5v1.308l4.372 4.858A.5.5 0 0 1 7 8.5v5.306l2-.666V8.5a.5.5 0 0 1 .128-.334L13.5 3.308V2z"/>
           </svg>
-        </Link>
+          {activeFilters.length > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-accent-strong text-white text-[9px] font-bold rounded-full flex items-center justify-center">{activeFilters.length}</span>
+          )}
+        </button>
       </div>
 
       {/* Bottom Row - Nav (desktop only) */}
