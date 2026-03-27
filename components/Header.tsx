@@ -67,8 +67,8 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border-light bg-background-card" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-      {/* Top Row */}
-      <div className="flex items-center justify-between px-6 py-3 max-w-7xl mx-auto">
+      {/* Desktop Top Row */}
+      <div className="hidden md:flex items-center justify-between px-6 py-3 max-w-7xl mx-auto">
         {/* Logo */}
         <Link href="/" className="text-2xl font-bold text-primary flex items-center gap-0">
           <div
@@ -251,9 +251,9 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Mobile Search Row */}
-      <div className="md:hidden px-3 pb-2.5">
-        <div className="relative">
+      {/* Mobile Top Row - search bar + post button only */}
+      <div className="flex md:hidden items-center gap-2 px-3 py-2">
+        <div className="relative flex-1">
           <input
             type="text"
             value={searchQuery}
@@ -267,14 +267,21 @@ export default function Header() {
             </svg>
           </span>
           {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-sub"
-            >
+            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-sub">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="2" y1="14" x2="14" y2="2"/><line x1="2" y1="2" x2="14" y2="14"/></svg>
             </button>
           )}
         </div>
+        <Link
+          href="/post"
+          className="flex-shrink-0 w-10 h-10 rounded-full bg-accent-strong text-white flex items-center justify-center shadow-sm active:scale-95 transition-transform"
+          title="口コミを書く"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/>
+          </svg>
+        </Link>
       </div>
 
       {/* Bottom Row - Nav (desktop only) */}

@@ -127,19 +127,19 @@ export default function Home() {
             絞り込み
             {activeFilters.length > 0 && <span className="bg-white/30 rounded-full px-1">{activeFilters.length}</span>}
           </button>
-          {['〜3,000円', '3,000円〜5,000円', '5,000円〜10,000円', '10,000円〜'].map((price) => {
-            const active = activeFilters.includes(`予算: ${price}`);
+          {['誕生日', 'お礼', '記念日', 'クリスマス', '結婚', '卒業', '就職', 'バレンタイン', '母の日', '父の日'].map((scene) => {
+            const active = activeFilters.includes(`シーン: ${scene}`);
             return (
               <button
-                key={price}
-                onClick={() => active ? removeFilter(`予算: ${price}`) : addFilter(`予算: ${price}`)}
+                key={scene}
+                onClick={() => active ? removeFilter(`シーン: ${scene}`) : addFilter(`シーン: ${scene}`)}
                 className={`flex-shrink-0 px-3 py-2 rounded-full text-xs font-bold border transition-all ${
                   active
                     ? 'bg-primary text-white border-primary'
                     : 'bg-background-card text-text-sub border-border-light'
                 }`}
               >
-                {price}
+                {scene}
               </button>
             );
           })}

@@ -70,8 +70,11 @@ export default function MobileNav() {
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background-card border-t border-border-light">
-      <div className="flex items-center justify-around px-2 py-1 safe-area-inset-bottom">
+    <nav
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background-card border-t border-border-light"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      <div className="flex items-center justify-around px-2 py-0.5">
         {items.map((item) => {
           const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
           if (item.isPost) {
@@ -79,12 +82,12 @@ export default function MobileNav() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex flex-col items-center justify-center -mt-4"
+                className="flex flex-col items-center justify-center -mt-3"
               >
-                <div className="w-14 h-14 rounded-full bg-accent-strong text-white flex items-center justify-center shadow-lg shadow-accent-strong/30 active:scale-95 transition-transform">
+                <div className="w-12 h-12 rounded-full bg-accent-strong text-white flex items-center justify-center shadow-lg shadow-accent-strong/30 active:scale-95 transition-transform">
                   {item.icon}
                 </div>
-                <span className="text-[10px] font-bold text-accent-strong mt-1">{item.label}</span>
+                <span className="text-[10px] font-bold text-accent-strong mt-0.5">{item.label}</span>
               </Link>
             );
           }
@@ -92,7 +95,7 @@ export default function MobileNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center gap-0.5 py-2 px-3 rounded-xl transition-colors min-w-[52px] ${
+              className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-3 rounded-xl transition-colors min-w-[52px] ${
                 isActive ? "text-primary" : "text-text-sub"
               }`}
             >
