@@ -62,19 +62,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ページナビゲーション → Stale While Revalidate（オフライン時は /offline にフォールバック）
+  // ページナビゲーション → Network First（HTMLはキャッシュしない。常に最新デプロイを表示）
   if (request.mode === 'navigate') {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        const network = fetch(request).then((res) => {
-          if (res.ok) {
-            const clone = res.clone();
-            caches.open(CACHE_NAME).then((c) => c.put(request, clone));
-          }
-          return res;
-        }).catch(() => caches.match('/offline'));
-        return cached || network;
-      })
+      fetch(request).catch(() => caches.match('/offline'))
     );
     return;
   }
