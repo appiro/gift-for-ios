@@ -32,6 +32,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
   const [mounted, setMounted] = useState(false);
   const [editingFile, setEditingFile] = useState<{ file: File; index: number } | null>(null);
   const [previewingFile, setPreviewingFile] = useState<{ file: File; previewUrl: string; index: number } | null>(null);
+  const [viewingIndex, setViewingIndex] = useState<number | null>(null);
 
   const [imageFiles, setImageFiles] = useState<(File | null)[]>([null, null]);
   const [imagePreviews, setImagePreviews] = useState<(string | null)[]>([null, null]);
@@ -260,6 +261,40 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
     setImagePreviews(prev => { const n = [...prev]; n[index] = URL.createObjectURL(compressed); return n; });
     setOriginalUrls(prev => { const n = [...prev]; n[index] = null; return n; });
     setCompressing(false);
+  };
+
+  // Handlers for viewing existing photo action sheet
+  const handleViewingReplace = () => {
+    if (viewingIndex === null) return;
+    const idx = viewingIndex;
+    setViewingIndex(null);
+    fileInputRefs[idx].current?.click();
+  };
+
+  const handleViewingEdit = async () => {
+    if (viewingIndex === null) return;
+    const index = viewingIndex;
+    setViewingIndex(null);
+    let file = imageFiles[index];
+    if (!file) {
+      // Existing URL — fetch and convert to File
+      const url = imagePreviews[index];
+      if (!url) return;
+      setCompressing(true);
+      try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        file = new File([blob], `photo_${index}.jpg`, { type: blob.type || 'image/jpeg' });
+      } catch { setCompressing(false); return; }
+      setCompressing(false);
+    }
+    setEditingFile({ file, index });
+  };
+
+  const handleViewingDelete = () => {
+    if (viewingIndex === null) return;
+    removeImage(viewingIndex);
+    setViewingIndex(null);
   };
 
   const handleEditorConfirm = async (edited: File) => {
@@ -589,7 +624,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
                 <div className="grid grid-cols-2 gap-3 max-w-xs">
                   {[0, 1].map((index) => (
                     <div key={index}>
-                      <div onClick={() => fileInputRefs[index].current?.click()}
+                      <div onClick={() => imagePreviews[index] ? setViewingIndex(index) : fileInputRefs[index].current?.click()}
                         className="aspect-square bg-background-soft border-2 border-dashed border-border-light rounded-2xl flex flex-col items-center justify-center text-text-sub hover:bg-white hover:border-primary cursor-pointer transition-colors group overflow-hidden">
                         {compressing && !imagePreviews[index] ? (
                           <Spinner size={8} color="text-primary" />
@@ -883,6 +918,58 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
               <button onClick={handlePreviewConfirm} disabled={compressing}
                 className="flex-[2] py-3 rounded-2xl bg-primary text-white text-sm font-bold disabled:opacity-50 hover:opacity-90 transition-opacity">
                 {compressing ? '処理中...' : '確認'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Existing photo action sheet */}
+      {viewingIndex !== null && mounted && imagePreviews[viewingIndex] && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-black/30 backdrop-blur-sm flex items-end sm:items-center justify-center">
+          <div
+            className="w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-3xl flex flex-col overflow-hidden"
+            style={{ maxHeight: 'calc(100vh - 24px)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+          >
+            {/* Handle */}
+            <div className="flex justify-center pt-2.5 pb-0 sm:hidden flex-shrink-0">
+              <div className="w-9 h-1 rounded-full bg-gray-200" />
+            </div>
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 h-11 flex-shrink-0">
+              <span className="text-sm font-bold text-gray-900">写真を選択</span>
+              <button onClick={() => setViewingIndex(null)} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">キャンセル</button>
+            </div>
+            {/* Current photo */}
+            <div className="mx-4 mb-3 rounded-2xl overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0"
+              style={{ minHeight: 160, maxHeight: 320 }}>
+              <img
+                src={imagePreviews[viewingIndex]!}
+                alt="current"
+                style={{ maxWidth: '100%', maxHeight: 320, objectFit: 'contain', display: 'block' }}
+              />
+            </div>
+            {/* Replace button */}
+            <div className="px-4 mb-2 flex-shrink-0">
+              <button onClick={handleViewingReplace}
+                className="w-full py-3 rounded-2xl border-2 border-primary/30 text-primary text-sm font-bold hover:bg-primary/5 transition-colors flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
+                  <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708z"/>
+                </svg>
+                別の写真を選ぶ
+              </button>
+            </div>
+            {/* Edit + Delete */}
+            <div className="flex items-center gap-2 px-4 pb-4 flex-shrink-0">
+              <button onClick={handleViewingDelete}
+                className="flex-1 py-3 rounded-2xl border-2 border-red-100 text-red-400 text-sm font-bold hover:bg-red-50 transition-colors">
+                削除
+              </button>
+              <button onClick={handleViewingEdit} disabled={compressing}
+                className="flex-[2] py-3 rounded-2xl bg-primary text-white text-sm font-bold disabled:opacity-50 hover:opacity-90 transition-opacity">
+                {compressing ? '読み込み中...' : '編集'}
               </button>
             </div>
           </div>
