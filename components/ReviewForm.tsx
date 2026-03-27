@@ -29,6 +29,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [compressing, setCompressing] = useState(false);
   const [priceUnknown, setPriceUnknown] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [editingFile, setEditingFile] = useState<{ file: File; index: number } | null>(null);
   const [previewingFile, setPreviewingFile] = useState<{ file: File; previewUrl: string; index: number } | null>(null);
 
@@ -89,6 +90,8 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
     setShowInterruptModal(false);
     router.push('/');
   };
+
+  useEffect(() => { setMounted(true); }, []);
 
   // Load draft on create mode mount
   useEffect(() => {
@@ -841,42 +844,47 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
         </div>
       )}
 
-      {/* Photo preview overlay: portal で framer-motion の transform を回避 */}
-      {previewingFile && typeof document !== 'undefined' && createPortal(
-        <div
-          className="fixed inset-0 z-[9999] bg-black flex flex-col"
-          style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
-        >
-          <div className="flex-1 relative flex items-center justify-center min-h-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewingFile.previewUrl}
-              alt="preview"
-              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-            />
-            {/* 右上: 編集 */}
-            <button
-              onClick={handlePreviewEdit}
-              className="absolute top-4 right-4 px-4 py-2 bg-black/60 rounded-full text-white text-sm font-bold backdrop-blur-sm"
-            >
-              編集
-            </button>
-          </div>
-          {/* ボトムバー */}
-          <div className="flex items-center justify-between px-8 py-5">
-            <button
-              onClick={handlePreviewDelete}
-              className="px-5 py-3 rounded-full bg-white/10 text-white text-sm font-bold"
-            >
-              削除
-            </button>
-            <button
-              onClick={handlePreviewConfirm}
-              disabled={compressing}
-              className="px-7 py-3 rounded-full bg-primary text-white text-sm font-bold disabled:opacity-50"
-            >
-              {compressing ? '処理中...' : '確認'}
-            </button>
+      {/* Photo preview overlay */}
+      {previewingFile && mounted && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-black/30 backdrop-blur-sm flex items-end sm:items-center justify-center">
+          <div
+            className="w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-3xl flex flex-col overflow-hidden"
+            style={{ maxHeight: 'calc(100vh - 24px)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+          >
+            {/* Handle */}
+            <div className="flex justify-center pt-2.5 pb-0 sm:hidden flex-shrink-0">
+              <div className="w-9 h-1 rounded-full bg-gray-200" />
+            </div>
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 h-11 flex-shrink-0">
+              <span className="text-sm font-bold text-gray-900">写真を確認</span>
+              <button onClick={handlePreviewDelete} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">キャンセル</button>
+            </div>
+            {/* Image */}
+            <div className="mx-4 mb-4 rounded-2xl overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0"
+              style={{ minHeight: 180, maxHeight: 360 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewingFile.previewUrl}
+                alt="preview"
+                style={{ maxWidth: '100%', maxHeight: 360, objectFit: 'contain', display: 'block' }}
+              />
+            </div>
+            {/* Actions: 削除 | 編集 | 確認 */}
+            <div className="flex items-center gap-2 px-4 pb-4 flex-shrink-0">
+              <button onClick={handlePreviewDelete}
+                className="flex-1 py-3 rounded-2xl border-2 border-red-100 text-red-400 text-sm font-bold hover:bg-red-50 transition-colors">
+                削除
+              </button>
+              <button onClick={handlePreviewEdit}
+                className="flex-1 py-3 rounded-2xl border-2 border-gray-200 text-gray-600 text-sm font-bold hover:bg-gray-50 transition-colors">
+                編集
+              </button>
+              <button onClick={handlePreviewConfirm} disabled={compressing}
+                className="flex-[2] py-3 rounded-2xl bg-primary text-white text-sm font-bold disabled:opacity-50 hover:opacity-90 transition-opacity">
+                {compressing ? '処理中...' : '確認'}
+              </button>
+            </div>
           </div>
         </div>,
         document.body
