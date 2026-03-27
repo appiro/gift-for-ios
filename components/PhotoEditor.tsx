@@ -159,14 +159,12 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
     [imgNW, imgNH, cropPx]
   );
 
-  const handleScaleChange = (newScale: number) => {
+  // focusCx/focusCy: the point in crop-box coordinates to keep fixed while zooming
+  const handleScaleChange = (newScale: number, focusCx = cropPx / 2, focusCy = cropPx / 2) => {
     const clamped = Math.max(minScale, Math.min(minScale * 3, newScale));
-    // Zoom toward the center of the crop box
-    const cx = cropPx / 2;
-    const cy = cropPx / 2;
-    const imgX = (cx - offsetX) / scale;
-    const imgY = (cy - offsetY) / scale;
-    const { x, y } = clampOffset(cx - imgX * clamped, cy - imgY * clamped, clamped);
+    const imgX = (focusCx - offsetX) / scale;
+    const imgY = (focusCy - offsetY) / scale;
+    const { x, y } = clampOffset(focusCx - imgX * clamped, focusCy - imgY * clamped, clamped);
     setScale(clamped); setOffsetX(x); setOffsetY(y);
   };
 
@@ -198,7 +196,11 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      handleScaleChange(scale * (dist / pinchRef.current.lastDist));
+      // Zoom toward the midpoint of the two fingers
+      const rect = cropContainerRef.current?.getBoundingClientRect();
+      const cx = rect ? (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left : cropPx / 2;
+      const cy = rect ? (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top  : cropPx / 2;
+      handleScaleChange(scale * (dist / pinchRef.current.lastDist), cx, cy);
       pinchRef.current.lastDist = dist;
     }
   };
@@ -386,15 +388,15 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
             {activeTab === 'angle' && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-400 w-7 flex-shrink-0">−30°</span>
+                  <span className="text-[10px] text-gray-400 w-7 flex-shrink-0">−45°</span>
                   <input
-                    type="range" min={-30} max={30} step={0.5} value={rotation}
+                    type="range" min={-45} max={45} step={0.5} value={rotation}
                     onChange={(e) => { const v = Number(e.target.value); setRotation(v); rotationRef.current = v; }}
                     onMouseUp={() => pushHistory({ ...currentSnap(), rotation: rotationRef.current })}
                     onTouchEnd={() => pushHistory({ ...currentSnap(), rotation: rotationRef.current })}
                     className="flex-1 accent-primary"
                   />
-                  <span className="text-[10px] text-gray-400 w-7 flex-shrink-0 text-right">+30°</span>
+                  <span className="text-[10px] text-gray-400 w-7 flex-shrink-0 text-right">+45°</span>
                   <span className="text-xs font-bold text-gray-700 w-10 text-right flex-shrink-0">
                     {rotation > 0 ? '+' : ''}{rotation.toFixed(1)}°
                   </span>
