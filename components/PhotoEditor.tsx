@@ -54,21 +54,21 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
   const [imgNW, setImgNW] = useState(1);
   const [imgNH, setImgNH] = useState(1);
   const [sourceUrl, setSourceUrl] = useState('');
-  const [processedUrl, setProcessedUrl] = useState('');
-  const [rotation, setRotation] = useState(0);
+  const [rotation, setRotation] = useState(0);   // fine adjust: -30..+30 deg
   const [flipH, setFlipH] = useState(false);
   const [flipV, setFlipV] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'transform' | 'filter'>('transform');
+  const [activeTab, setActiveTab] = useState<'zoom' | 'angle' | 'filter'>('zoom');
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [cropPx, setCropPx] = useState(340);
 
   const dragRef = useRef<{ startX: number; startY: number; ox: number; oy: number } | null>(null);
   const pinchRef = useRef<{ lastDist: number } | null>(null);
-  const processedUrlRef = useRef('');
   const cropContainerRef = useRef<HTMLDivElement>(null);
+  const cropPxRef = useRef(340);
   const filterStrengthRef = useRef(100);
+  const rotationRef = useRef(0);
 
   // History via refs to avoid stale closures
   const histRef = useRef<Snapshot[]>([{ rotation: 0, flipH: false, flipV: false, filterId: 'normal', filterStrength: 100 }]);
@@ -88,6 +88,7 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
 
   const applySnap = (snap: Snapshot) => {
     setRotation(snap.rotation);
+    rotationRef.current = snap.rotation;
     setFlipH(snap.flipH);
     setFlipV(snap.flipV);
     setFilterId(snap.filterId);
@@ -109,58 +110,30 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
     syncHistoryUI();
   };
 
-  // Measure crop container after mount
+  // Load file and measure container in one shot
   useEffect(() => {
     if (cropContainerRef.current) {
       const w = cropContainerRef.current.offsetWidth;
-      if (w > 0) setCropPx(w);
+      if (w > 0) { setCropPx(w); cropPxRef.current = w; }
     }
-  }, []);
 
-  // Load original file
-  useEffect(() => {
     const url = URL.createObjectURL(file);
     setSourceUrl(url);
+    const img = new Image();
+    img.onload = () => {
+      const cp = cropPxRef.current;
+      const minS = Math.max(cp / img.naturalWidth, cp / img.naturalHeight);
+      setImgNW(img.naturalWidth);
+      setImgNH(img.naturalHeight);
+      setScale(minS);
+      setOffsetX((cp - img.naturalWidth * minS) / 2);
+      setOffsetY((cp - img.naturalHeight * minS) / 2);
+    };
+    img.src = url;
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  // Rebuild processed image on rotation/flip change
-  useEffect(() => {
-    if (!sourceUrl || cropPx === 0) return;
-    let cancelled = false;
-    const img = new Image();
-    img.onload = () => {
-      if (cancelled) return;
-      const rotated90 = rotation === 90 || rotation === 270;
-      const w = rotated90 ? img.naturalHeight : img.naturalWidth;
-      const h = rotated90 ? img.naturalWidth : img.naturalHeight;
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext('2d')!;
-      ctx.translate(w / 2, h / 2);
-      ctx.rotate((rotation * Math.PI) / 180);
-      ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
-      ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
-      canvas.toBlob((blob) => {
-        if (!blob || cancelled) return;
-        const url = URL.createObjectURL(blob);
-        URL.revokeObjectURL(processedUrlRef.current);
-        processedUrlRef.current = url;
-        setProcessedUrl(url);
-        setImgNW(w); setImgNH(h);
-        const minS = Math.max(cropPx / w, cropPx / h);
-        setScale(minS);
-        setOffsetX((cropPx - w * minS) / 2);
-        setOffsetY((cropPx - h * minS) / 2);
-      });
-    };
-    img.src = sourceUrl;
-    return () => { cancelled = true; };
-  }, [sourceUrl, rotation, flipH, flipV, cropPx]);
-
-  useEffect(() => () => URL.revokeObjectURL(processedUrlRef.current), []);
-
-  const minScale = Math.max(cropPx / imgNW, cropPx / imgNH);
+  const minScale = Math.max(cropPx / Math.max(imgNW, 1), cropPx / Math.max(imgNH, 1));
 
   const clampOffset = useCallback(
     (ox: number, oy: number, s: number) => ({
@@ -211,28 +184,47 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
   const onTouchEnd = () => { pinchRef.current = null; };
 
   const currentSnap = (): Snapshot => ({
-    rotation, flipH, flipV, filterId, filterStrength: filterStrengthRef.current,
+    rotation: rotationRef.current, flipH, flipV,
+    filterId, filterStrength: filterStrengthRef.current,
   });
 
   const filterDef = FILTER_DEFS.find(f => f.id === filterId) ?? FILTER_DEFS[0];
   const filterCss = buildFilterCss(filterDef, filterStrength);
-  const zoomPct = Math.round((scale / minScale) * 100);
+  const zoomPct = Math.round(scale / minScale * 100);
 
   const handleConfirm = async () => {
     setProcessing(true);
     const img = new Image();
-    img.src = processedUrl;
+    img.src = sourceUrl;
     await new Promise<void>((res) => { img.onload = () => res(); if (img.complete) res(); });
+
     const canvas = document.createElement('canvas');
     canvas.width = OUTPUT_SIZE; canvas.height = OUTPUT_SIZE;
     const ctx = canvas.getContext('2d')!;
     if (filterCss !== 'none') ctx.filter = filterCss;
-    ctx.drawImage(img, -offsetX / scale, -offsetY / scale, cropPx / scale, cropPx / scale, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+
+    // Replicate CSS transform: rotate + flip around image center
+    const ratio = OUTPUT_SIZE / cropPx;
+    const cx = (offsetX + imgNW * scale / 2) * ratio;
+    const cy = (offsetY + imgNH * scale / 2) * ratio;
+    ctx.translate(cx, cy);
+    ctx.rotate(rotation * Math.PI / 180);
+    ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
+    ctx.drawImage(
+      img,
+      -imgNW * scale / 2 * ratio,
+      -imgNH * scale / 2 * ratio,
+      imgNW * scale * ratio,
+      imgNH * scale * ratio,
+    );
+
     canvas.toBlob((blob) => {
       if (!blob) { setProcessing(false); return; }
       onConfirm(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }));
     }, 'image/jpeg', 0.9);
   };
+
+  const imgTransform = `rotate(${rotation}deg) scaleX(${flipH ? -1 : 1}) scaleY(${flipV ? -1 : 1})`;
 
   return (
     <div
@@ -253,12 +245,20 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
         </button>
       </div>
 
-      {/* Image area */}
-      <div className="flex-1 relative bg-black flex items-center justify-center min-h-0">
-        {/* Crop container - full width square */}
+      {/* Image crop area */}
+      <div className="flex-1 relative bg-black flex items-center justify-center min-h-0 py-2">
         <div
           ref={cropContainerRef}
-          style={{ width: '100%', aspectRatio: '1 / 1', overflow: 'hidden', position: 'relative', cursor: 'grab', touchAction: 'none', maxHeight: '100%', maxWidth: '100%' }}
+          style={{
+            width: '100%',
+            aspectRatio: '1 / 1',
+            overflow: 'hidden',
+            position: 'relative',
+            cursor: 'grab',
+            touchAction: 'none',
+            maxHeight: '100%',
+            maxWidth: '100%',
+          }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -267,19 +267,21 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
         >
-          {processedUrl && (
+          {sourceUrl && (
             <img
-              src={processedUrl}
+              src={sourceUrl}
               alt="edit"
               draggable={false}
               style={{
                 position: 'absolute',
                 width: imgNW * scale,
                 height: imgNH * scale,
-                maxWidth: 'none',   // Tailwindの max-width: 100% を無効化（縦伸び防止）
+                maxWidth: 'none',
                 maxHeight: 'none',
                 left: offsetX,
                 top: offsetY,
+                transform: imgTransform,
+                transformOrigin: 'center center',
                 filter: filterCss === 'none' ? undefined : filterCss,
                 userSelect: 'none',
                 pointerEvents: 'none',
@@ -298,7 +300,7 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
         </div>
 
         {/* Undo / Redo */}
-        <div className="absolute bottom-3 right-3 flex gap-2">
+        <div className="absolute bottom-4 right-3 flex gap-2">
           {[
             { label: 'undo', action: undo, disabled: !canUndo, icon: (
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
@@ -323,31 +325,60 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
 
       {/* Tab bar */}
       <div className="bg-black flex-shrink-0 border-t border-white/10">
-        {/* Tabs */}
         <div className="flex">
-          {(['transform', 'filter'] as const).map((tab) => (
+          {(['zoom', 'angle', 'filter'] as const).map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-3 text-xs font-bold border-t-2 transition-colors ${activeTab === tab ? 'border-white text-white' : 'border-transparent text-white/35'}`}>
-              {tab === 'transform' ? '変形' : 'フィルタ'}
+              className={`flex-1 py-2.5 text-xs font-bold border-t-2 transition-colors ${activeTab === tab ? 'border-white text-white' : 'border-transparent text-white/35'}`}>
+              {tab === 'zoom' ? 'ズーム' : tab === 'angle' ? '角度' : 'フィルタ'}
             </button>
           ))}
         </div>
 
-        {/* Tab content */}
-        <div className="px-4 py-4 min-h-[130px]">
-          {activeTab === 'transform' && (
-            <div className="space-y-4">
-              {/* Rotate & Flip */}
+        <div className="px-4 py-3 min-h-[105px]">
+          {/* ズーム tab */}
+          {activeTab === 'zoom' && (
+            <div className="flex items-center justify-center gap-8 h-full pt-2">
+              <button
+                onClick={() => handleScaleChange(scale - minScale * 0.1)}
+                disabled={scale <= minScale + 0.001}
+                className="w-12 h-12 rounded-full bg-white/10 text-white text-2xl font-light flex items-center justify-center disabled:opacity-25 active:scale-90 transition-all"
+              >−</button>
+              <span className="text-white text-base font-bold w-16 text-center">{zoomPct}%</span>
+              <button
+                onClick={() => handleScaleChange(scale + minScale * 0.1)}
+                disabled={scale >= minScale * 3 - 0.001}
+                className="w-12 h-12 rounded-full bg-white/10 text-white text-2xl font-light flex items-center justify-center disabled:opacity-25 active:scale-90 transition-all"
+              >＋</button>
+            </div>
+          )}
+
+          {/* 角度 tab */}
+          {activeTab === 'angle' && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-white/50 w-8 flex-shrink-0">−30°</span>
+                <input
+                  type="range"
+                  min={-30}
+                  max={30}
+                  step={0.5}
+                  value={rotation}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    setRotation(v);
+                    rotationRef.current = v;
+                  }}
+                  onMouseUp={() => pushHistory({ ...currentSnap(), rotation: rotationRef.current })}
+                  onTouchEnd={() => pushHistory({ ...currentSnap(), rotation: rotationRef.current })}
+                  className="flex-1 accent-primary"
+                />
+                <span className="text-[10px] text-white/50 w-8 flex-shrink-0 text-right">+30°</span>
+                <span className="text-xs font-bold text-white w-12 text-right flex-shrink-0">
+                  {rotation > 0 ? '+' : ''}{rotation.toFixed(1)}°
+                </span>
+              </div>
               <div className="flex items-center justify-around">
                 {[
-                  { label: '左回転', active: false,
-                    action: () => { const r = (rotation - 90 + 360) % 360; setRotation(r); pushHistory({ ...currentSnap(), rotation: r }); },
-                    icon: <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16"><path fillRule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/></svg>
-                  },
-                  { label: '右回転', active: false,
-                    action: () => { const r = (rotation + 90) % 360; setRotation(r); pushHistory({ ...currentSnap(), rotation: r }); },
-                    icon: <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16"><path fillRule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
-                  },
                   { label: '左右反転', active: flipH,
                     action: () => { const v = !flipH; setFlipH(v); pushHistory({ ...currentSnap(), flipH: v }); },
                     icon: <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16"><path d="M8 .5a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-1 0V1A.5.5 0 0 1 8 .5M2.646 5.646a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L4.293 8 2.646 6.354a.5.5 0 0 1 0-.708m10.708 0a.5.5 0 0 1 0 .708L11.707 8l1.647 1.646a.5.5 0 0 1-.708.708l-2-2a.5.5 0 0 1 0-.708l2-2a.5.5 0 0 1 .708 0"/></svg>
@@ -358,30 +389,16 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
                   },
                 ].map(({ label, action, icon, active }) => (
                   <button key={label} onClick={action}
-                    className={`flex flex-col items-center gap-1.5 px-2 active:scale-90 transition-transform ${active ? 'text-primary' : 'text-white/70'}`}>
+                    className={`flex flex-col items-center gap-1.5 px-6 active:scale-90 transition-transform ${active ? 'text-primary' : 'text-white/70'}`}>
                     {icon}
                     <span className="text-[10px] font-bold">{label}</span>
                   </button>
                 ))}
               </div>
-
-              {/* Zoom +/- */}
-              <div className="flex items-center justify-center gap-6">
-                <button
-                  onClick={() => handleScaleChange(scale / 1.1)}
-                  disabled={scale <= minScale + 0.001}
-                  className="w-11 h-11 rounded-full bg-white/10 text-white text-2xl font-light flex items-center justify-center disabled:opacity-25 active:scale-90 transition-all"
-                >−</button>
-                <span className="text-white text-sm font-bold w-14 text-center">{zoomPct}%</span>
-                <button
-                  onClick={() => handleScaleChange(scale * 1.1)}
-                  disabled={scale >= minScale * 3 - 0.001}
-                  className="w-11 h-11 rounded-full bg-white/10 text-white text-2xl font-light flex items-center justify-center disabled:opacity-25 active:scale-90 transition-all"
-                >＋</button>
-              </div>
             </div>
           )}
 
+          {/* フィルタ tab */}
           {activeTab === 'filter' && (
             <div className="space-y-3">
               <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-1">
@@ -390,9 +407,9 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
                     onClick={() => { setFilterId(f.id); pushHistory({ ...currentSnap(), filterId: f.id }); }}
                     className={`flex-shrink-0 flex flex-col items-center gap-1.5 transition-opacity ${filterId === f.id ? 'opacity-100' : 'opacity-50'}`}
                   >
-                    <div style={{ width: 58, height: 58, overflow: 'hidden', borderRadius: 8, border: filterId === f.id ? '2px solid white' : '2px solid transparent' }}>
-                      {processedUrl && (
-                        <img src={processedUrl} alt={f.label}
+                    <div style={{ width: 52, height: 52, overflow: 'hidden', borderRadius: 8, border: filterId === f.id ? '2px solid white' : '2px solid transparent' }}>
+                      {sourceUrl && (
+                        <img src={sourceUrl} alt={f.label}
                           style={{ width: '100%', height: '100%', objectFit: 'cover', maxWidth: 'none',
                             filter: buildFilterCss(f, 100) === 'none' ? undefined : buildFilterCss(f, 100) }}
                         />

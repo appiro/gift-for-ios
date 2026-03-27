@@ -29,6 +29,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
   const [compressing, setCompressing] = useState(false);
   const [priceUnknown, setPriceUnknown] = useState(false);
   const [editingFile, setEditingFile] = useState<{ file: File; index: number } | null>(null);
+  const [previewingFile, setPreviewingFile] = useState<{ file: File; previewUrl: string; index: number } | null>(null);
 
   const [imageFiles, setImageFiles] = useState<(File | null)[]>([null, null]);
   const [imagePreviews, setImagePreviews] = useState<(string | null)[]>([null, null]);
@@ -225,8 +226,36 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setEditingFile({ file, index });
+    const previewUrl = URL.createObjectURL(file);
+    setPreviewingFile({ file, previewUrl, index });
     e.target.value = '';
+  };
+
+  const handlePreviewDelete = () => {
+    if (!previewingFile) return;
+    URL.revokeObjectURL(previewingFile.previewUrl);
+    setPreviewingFile(null);
+  };
+
+  const handlePreviewEdit = () => {
+    if (!previewingFile) return;
+    const { file, previewUrl, index } = previewingFile;
+    URL.revokeObjectURL(previewUrl);
+    setPreviewingFile(null);
+    setEditingFile({ file, index });
+  };
+
+  const handlePreviewConfirm = async () => {
+    if (!previewingFile) return;
+    const { file, previewUrl, index } = previewingFile;
+    URL.revokeObjectURL(previewUrl);
+    setPreviewingFile(null);
+    setCompressing(true);
+    const compressed = await compressImage(file);
+    setImageFiles(prev => { const n = [...prev]; n[index] = compressed; return n; });
+    setImagePreviews(prev => { const n = [...prev]; n[index] = URL.createObjectURL(compressed); return n; });
+    setOriginalUrls(prev => { const n = [...prev]; n[index] = null; return n; });
+    setCompressing(false);
   };
 
   const handleEditorConfirm = async (edited: File) => {
@@ -807,6 +836,47 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
                 投稿をやめる
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Photo preview overlay: 右上=編集, 左下=削除, 右下=確認 */}
+      {previewingFile && (
+        <div
+          className="fixed inset-0 z-[200] bg-black flex flex-col"
+          style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
+          <div className="flex-1 relative flex items-center justify-center min-h-0">
+            <img
+              src={previewingFile.previewUrl}
+              alt="preview"
+              className="max-w-full max-h-full object-contain"
+            />
+            {/* 右上: 編集 */}
+            <button
+              onClick={handlePreviewEdit}
+              className="absolute top-4 right-4 px-4 py-2 bg-black/60 rounded-full text-white text-sm font-bold backdrop-blur-sm"
+            >
+              編集
+            </button>
+          </div>
+          {/* ボトムバー */}
+          <div className="flex items-center justify-between px-8 py-5">
+            {/* 左下: 削除 */}
+            <button
+              onClick={handlePreviewDelete}
+              className="px-5 py-3 rounded-full bg-white/10 text-white text-sm font-bold"
+            >
+              削除
+            </button>
+            {/* 右下: 確認 */}
+            <button
+              onClick={handlePreviewConfirm}
+              disabled={compressing}
+              className="px-7 py-3 rounded-full bg-primary text-white text-sm font-bold disabled:opacity-50"
+            >
+              {compressing ? '処理中...' : '確認'}
+            </button>
           </div>
         </div>
       )}
