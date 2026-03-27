@@ -240,10 +240,10 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
 
   return (
     // Backdrop — shows page behind
-    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/30 backdrop-blur-sm">
       {/* Modal card */}
       <div
-        className="w-full sm:max-w-[420px] bg-[#1c1c1e] rounded-t-3xl sm:rounded-3xl flex flex-col overflow-hidden"
+        className="w-full sm:max-w-[420px] bg-white rounded-t-3xl sm:rounded-3xl flex flex-col overflow-hidden"
         style={{
           maxHeight: 'calc(100vh - 24px)',
           paddingBottom: 'env(safe-area-inset-bottom)',
@@ -251,17 +251,17 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
       >
         {/* Drag handle (mobile only) */}
         <div className="flex justify-center pt-2.5 pb-1 sm:hidden flex-shrink-0">
-          <div className="w-9 h-1 rounded-full bg-white/25" />
+          <div className="w-9 h-1 rounded-full bg-gray-200" />
         </div>
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 h-10 flex-shrink-0">
-          <button onClick={onCancel} className="w-8 h-8 flex items-center justify-center text-white/70 hover:text-white transition-colors">
+          <button onClick={onCancel} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 16 16">
               <line x1="2" y1="14" x2="14" y2="2"/><line x1="2" y1="2" x2="14" y2="14"/>
             </svg>
           </button>
-          <span className="text-xs font-bold text-white">写真を編集</span>
+          <span className="text-xs font-bold text-gray-800">写真を編集</span>
           <button onClick={handleConfirm} disabled={processing}
             className="text-xs font-bold text-primary disabled:opacity-40 px-2 py-1">
             {processing ? '処理中...' : '完了'}
@@ -341,7 +341,7 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
               )},
             ].map(({ label, action, disabled, icon }) => (
               <button key={label} onClick={action} disabled={disabled}
-                className="w-7 h-7 bg-black/60 rounded-md flex items-center justify-center text-white disabled:opacity-25 active:scale-90 transition-transform">
+                className="w-7 h-7 bg-white/80 shadow rounded-md flex items-center justify-center text-gray-600 disabled:opacity-25 active:scale-90 transition-transform">
                 {icon}
               </button>
             ))}
@@ -349,12 +349,12 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
         </div>
 
         {/* Controls */}
-        <div className="flex flex-col flex-shrink-0" style={{ minHeight: 112, maxHeight: 160 }}>
+        <div className="flex flex-col flex-shrink-0 border-t border-gray-100" style={{ minHeight: 112, maxHeight: 160 }}>
           {/* Tab bar */}
-          <div className="flex border-b border-white/10 flex-shrink-0">
+          <div className="flex border-b border-gray-100 flex-shrink-0">
             {(['zoom', 'angle', 'filter'] as const).map((tab) => (
               <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-2 text-xs font-bold border-b-2 transition-colors ${activeTab === tab ? 'border-white text-white' : 'border-transparent text-white/35'}`}>
+                className={`flex-1 py-2 text-xs font-bold border-b-2 transition-colors ${activeTab === tab ? 'border-primary text-primary' : 'border-transparent text-gray-400'}`}>
                 {tab === 'zoom' ? 'ズーム' : tab === 'angle' ? '角度' : 'フィルタ'}
               </button>
             ))}
@@ -367,13 +367,13 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
                 <button
                   onClick={() => handleScaleChange(scale - minScale * 0.1)}
                   disabled={scale <= minScale + 0.001}
-                  className="w-10 h-10 rounded-full bg-white/10 text-white text-xl font-light flex items-center justify-center disabled:opacity-25 active:scale-90 transition-all"
+                  className="w-10 h-10 rounded-full bg-gray-100 text-gray-700 text-xl font-light flex items-center justify-center disabled:opacity-25 active:scale-90 transition-all"
                 >−</button>
-                <span className="text-white text-sm font-bold w-14 text-center">{zoomPct}%</span>
+                <span className="text-gray-700 text-sm font-bold w-14 text-center">{zoomPct}%</span>
                 <button
                   onClick={() => handleScaleChange(scale + minScale * 0.1)}
                   disabled={scale >= minScale * 3 - 0.001}
-                  className="w-10 h-10 rounded-full bg-white/10 text-white text-xl font-light flex items-center justify-center disabled:opacity-25 active:scale-90 transition-all"
+                  className="w-10 h-10 rounded-full bg-gray-100 text-gray-700 text-xl font-light flex items-center justify-center disabled:opacity-25 active:scale-90 transition-all"
                 >＋</button>
               </div>
             )}
@@ -381,7 +381,7 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
             {activeTab === 'angle' && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-white/40 w-7 flex-shrink-0">−30°</span>
+                  <span className="text-[10px] text-gray-400 w-7 flex-shrink-0">−30°</span>
                   <input
                     type="range" min={-30} max={30} step={0.5} value={rotation}
                     onChange={(e) => { const v = Number(e.target.value); setRotation(v); rotationRef.current = v; }}
@@ -389,8 +389,8 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
                     onTouchEnd={() => pushHistory({ ...currentSnap(), rotation: rotationRef.current })}
                     className="flex-1 accent-primary"
                   />
-                  <span className="text-[10px] text-white/40 w-7 flex-shrink-0 text-right">+30°</span>
-                  <span className="text-xs font-bold text-white w-10 text-right flex-shrink-0">
+                  <span className="text-[10px] text-gray-400 w-7 flex-shrink-0 text-right">+30°</span>
+                  <span className="text-xs font-bold text-gray-700 w-10 text-right flex-shrink-0">
                     {rotation > 0 ? '+' : ''}{rotation.toFixed(1)}°
                   </span>
                 </div>
@@ -406,7 +406,7 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
                     },
                   ].map(({ label, action, icon, active }) => (
                     <button key={label} onClick={action}
-                      className={`flex flex-col items-center gap-1 px-5 active:scale-90 transition-transform ${active ? 'text-primary' : 'text-white/60'}`}>
+                      className={`flex flex-col items-center gap-1 px-5 active:scale-90 transition-transform ${active ? 'text-primary' : 'text-gray-400'}`}>
                       {icon}
                       <span className="text-[10px] font-bold">{label}</span>
                     </button>
@@ -423,7 +423,7 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
                       onClick={() => { setFilterId(f.id); pushHistory({ ...currentSnap(), filterId: f.id }); }}
                       className={`flex-shrink-0 flex flex-col items-center gap-1 transition-opacity ${filterId === f.id ? 'opacity-100' : 'opacity-50'}`}
                     >
-                      <div style={{ width: 44, height: 44, overflow: 'hidden', borderRadius: 7, border: filterId === f.id ? '2px solid white' : '2px solid transparent' }}>
+                      <div style={{ width: 44, height: 44, overflow: 'hidden', borderRadius: 7, border: filterId === f.id ? '2px solid var(--color-primary, #f472b6)' : '2px solid transparent' }}>
                         {sourceUrl && (
                           <img src={sourceUrl} alt={f.label}
                             style={{ width: '100%', height: '100%', objectFit: 'cover', maxWidth: 'none',
@@ -431,19 +431,19 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
                           />
                         )}
                       </div>
-                      <span className="text-[9px] font-bold text-white">{f.label}</span>
+                      <span className="text-[9px] font-bold text-gray-700">{f.label}</span>
                     </button>
                   ))}
                 </div>
                 {filterId !== 'normal' && (
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-white/40 w-4">弱</span>
+                    <span className="text-[10px] text-gray-400 w-4">弱</span>
                     <input type="range" min={0} max={100} step={1} value={filterStrength}
                       onChange={(e) => { const v = Number(e.target.value); setFilterStrength(v); filterStrengthRef.current = v; }}
                       onMouseUp={() => pushHistory({ ...currentSnap(), filterStrength: filterStrengthRef.current })}
                       onTouchEnd={() => pushHistory({ ...currentSnap(), filterStrength: filterStrengthRef.current })}
                       className="flex-1 accent-primary" />
-                    <span className="text-[10px] text-white/40 w-8 text-right">{filterStrength}%</span>
+                    <span className="text-[10px] text-gray-400 w-8 text-right">{filterStrength}%</span>
                   </div>
                 )}
               </div>
