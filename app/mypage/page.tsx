@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 type ReviewStatus = "published" | "private" | "draft" | "trash";
 type MainTab = ReviewStatus | "lists";
 
-type UserReview = { id: string; imageUrl: string; title: string; productName: string; price: string; likes: number; episode: string; status: ReviewStatus };
+type UserReview = { id: string; imageUrl: string; title: string; productName: string; price: string; likes: number; episode: string; status: ReviewStatus; updatedAt?: string };
 type UserList = { id: string; title: string; coverUrl: string | null; status: string; reviewCount: number };
 
 const mockReviews: UserReview[] = [];
@@ -74,12 +74,17 @@ export default function MyPage() {
   const [draftStatuses, setDraftStatuses] = useState<Record<string, ReviewStatus>>({});
   // 確認ダイアログのモード
   const [confirmMode, setConfirmMode] = useState<"discard" | "save" | null>(null);
+  // モーダル内でゴミ箱に移動予定の口コミ（まだAPIには送っていない）
+  const [pendingTrash, setPendingTrash] = useState<Set<string>>(new Set());
 
-  const hasChanges = Object.keys(draftStatuses).some((id) => draftStatuses[id] !== reviewStatuses[id]);
+  const hasChanges =
+    Object.keys(draftStatuses).some((id) => draftStatuses[id] !== reviewStatuses[id]) ||
+    pendingTrash.size > 0;
 
   const openEditModal = () => {
     setDraftStatuses({ ...reviewStatuses });
     setConfirmMode(null);
+    setPendingTrash(new Set());
     setShowEditModal(true);
   };
   const toggleDraft = (id: string) => {
@@ -96,34 +101,43 @@ export default function MyPage() {
   const tryClose = onCancelClick;
   const closeModal = () => { setShowEditModal(false); setConfirmMode(null); };
   const saveEdit = async () => {
-    // Persist changed statuses to API
     const changed = Object.keys(draftStatuses).filter(
       (id) => draftStatuses[id] !== reviewStatuses[id]
     );
-    await Promise.all(
-      changed.map((id) =>
+    const trashIds = [...pendingTrash];
+    await Promise.all([
+      ...changed.map((id) =>
         fetch('/api/user/reviews', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id, status: draftStatuses[id] }),
         })
-      )
-    );
-    setReviewStatuses({ ...draftStatuses });
+      ),
+      ...trashIds.map((id) =>
+        fetch('/api/user/reviews', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, status: 'trash' }),
+        })
+      ),
+    ]);
+    const now = new Date().toISOString();
+    setReviewStatuses((prev) => {
+      const next = { ...prev, ...draftStatuses };
+      trashIds.forEach((id) => { next[id] = 'trash'; });
+      return next;
+    });
     setApiReviews((prev) =>
-      prev.map((r) => ({ ...r, status: draftStatuses[r.id] ?? r.status }))
+      prev.map((r) => {
+        if (pendingTrash.has(r.id)) return { ...r, status: 'trash', updatedAt: now };
+        return { ...r, status: draftStatuses[r.id] ?? r.status };
+      })
     );
+    setPendingTrash(new Set());
     closeModal();
   };
-  const discardEdit = () => { setDraftStatuses({}); closeModal(); };
+  const discardEdit = () => { setDraftStatuses({}); setPendingTrash(new Set()); closeModal(); };
 
-  const deleteReview = async (id: string) => {
-    const res = await fetch(`/api/reviews/${id}`, { method: 'DELETE' });
-    if (!res.ok) { alert('削除に失敗しました'); return; }
-    setApiReviews((prev) => prev.filter((r) => r.id !== id));
-    setReviewStatuses((prev) => { const next = { ...prev }; delete next[id]; return next; });
-    setDraftStatuses((prev) => { const next = { ...prev }; delete next[id]; return next; });
-  };
 
   const permanentDelete = async (id: string) => {
     const res = await fetch(`/api/reviews/${id}`, { method: 'DELETE' });
@@ -173,10 +187,20 @@ export default function MyPage() {
       fetch('/api/user/reviews')
         .then((r) => r.json())
         .then((data: UserReview[]) => {
-          if (Array.isArray(data)) {
-            setApiReviews(data);
-            setReviewStatuses(Object.fromEntries(data.map((r) => [r.id, r.status])));
-          }
+          if (!Array.isArray(data)) return;
+          // 7日超のゴミ箱アイテムを自動完全削除
+          const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+          const expired = data.filter((r) =>
+            r.status === 'trash' &&
+            r.updatedAt &&
+            Date.now() - new Date(r.updatedAt).getTime() > WEEK_MS
+          );
+          expired.forEach((r) =>
+            fetch(`/api/reviews/${r.id}`, { method: 'DELETE' })
+          );
+          const alive = data.filter((r) => !expired.find((e) => e.id === r.id));
+          setApiReviews(alive);
+          setReviewStatuses(Object.fromEntries(alive.map((r) => [r.id, r.status])));
         })
         .finally(() => setLoadingReviews(false));
 
@@ -677,10 +701,16 @@ export default function MyPage() {
 
               {/* Body */}
               <div className="overflow-y-auto flex-1 px-4 py-4 space-y-2">
-                {reviews.filter((r) => r.status !== "draft").length === 0 && (
+                {reviews.filter((r) => r.status !== "draft" && r.status !== "trash" && !pendingTrash.has(r.id)).length === 0 && (
                   <p className="text-center text-sm text-text-sub py-10">公開・非公開の口コミがありません</p>
                 )}
-                {reviews.filter((r) => r.status !== "draft").map((review) => (
+                {pendingTrash.size > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-100 rounded-xl text-xs text-red-500 font-bold">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/></svg>
+                    {pendingTrash.size}件をゴミ箱に移動します（保存で確定）
+                  </div>
+                )}
+                {reviews.filter((r) => r.status !== "draft" && r.status !== "trash" && !pendingTrash.has(r.id)).map((review) => (
                   <motion.div key={review.id} layout className="flex items-start gap-3 p-4 bg-background-soft/60 border border-border-light/60 rounded-2xl hover:border-primary/30 transition-colors">
                     {/* テキスト情報 */}
                     <div className="flex-1 min-w-0">
@@ -693,13 +723,9 @@ export default function MyPage() {
                     {/* ステータストグル + 削除 */}
                     <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
 
-                      {/* 削除ボタン */}
+                      {/* 削除ボタン → ゴミ箱予約（保存時に確定） */}
                       <button
-                        onClick={() => {
-                          if (confirm(`「${review.title}」を削除しますか？\nこの操作は取り消せません。`)) {
-                            deleteReview(review.id);
-                          }
-                        }}
+                        onClick={() => setPendingTrash((prev) => new Set([...prev, review.id]))}
                         className="text-[10px] text-text-sub/50 hover:text-red-500 transition-colors flex items-center gap-1"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="currentColor" viewBox="0 0 16 16">
@@ -796,7 +822,11 @@ export default function MyPage() {
                         // --- 保存時の確認 ---
                         <>
                           <p className="text-sm font-bold text-text-main mb-1">変更を保存しますか？</p>
-                          <p className="text-xs text-text-sub mb-4">ステータスの変更が反映されます。</p>
+                          <p className="text-xs text-text-sub mb-4">
+                            {pendingTrash.size > 0
+                              ? `${pendingTrash.size}件の口コミがゴミ箱に移動されます。1週間後に自動削除されますが、それ以内なら元に戻せます。`
+                              : 'ステータスの変更が反映されます。'}
+                          </p>
                           <div className="flex gap-3">
                             <button
                               onClick={() => setConfirmMode(null)}
@@ -889,22 +919,38 @@ export default function MyPage() {
                       {activeTab === "private" && (
                         <span className="absolute top-2 left-2 z-10 px-2 py-0.5 bg-text-sub/60 text-white text-[9px] font-bold rounded-full backdrop-blur-sm">非公開</span>
                       )}
-                      {activeTab === "trash" && (
-                        <div className="absolute inset-0 bg-black/40 rounded-2xl flex flex-col items-center justify-center gap-2 z-10">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); if (confirm('完全に削除しますか？この操作は取り消せません。')) permanentDelete(review.id); }}
-                            className="px-3 py-1.5 bg-red-500 text-white text-xs font-bold rounded-full hover:bg-red-600"
-                          >
-                            完全に削除
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setApiReviews(prev => prev.map(r => r.id === review.id ? {...r, status: 'published'} : r)); fetch('/api/user/reviews', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: review.id, status: 'published' }) }); }}
-                            className="px-3 py-1.5 bg-white text-text-main text-xs font-bold rounded-full hover:opacity-90"
-                          >
-                            元に戻す
-                          </button>
-                        </div>
-                      )}
+                      {activeTab === "trash" && (() => {
+                        const trashedAt = review.updatedAt ? new Date(review.updatedAt) : null;
+                        const daysLeft = trashedAt
+                          ? 7 - Math.floor((Date.now() - trashedAt.getTime()) / 86400000)
+                          : null;
+                        return (
+                          <div className="absolute inset-0 bg-black/50 rounded-2xl flex flex-col items-center justify-center gap-2 z-10 p-2">
+                            {daysLeft !== null && (
+                              <span className="text-[10px] text-white/80 font-bold">
+                                {daysLeft > 0 ? `${daysLeft}日後に完全削除` : '間もなく削除'}
+                              </span>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setApiReviews(prev => prev.map(r => r.id === review.id ? { ...r, status: 'published' } : r));
+                                setReviewStatuses(prev => ({ ...prev, [review.id]: 'published' }));
+                                fetch('/api/user/reviews', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: review.id, status: 'published' }) });
+                              }}
+                              className="px-3 py-1.5 bg-white text-text-main text-xs font-bold rounded-full hover:opacity-90"
+                            >
+                              元に戻す
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); if (confirm('完全に削除しますか？この操作は取り消せません。')) permanentDelete(review.id); }}
+                              className="text-[10px] text-white/60 hover:text-red-300 transition-colors"
+                            >
+                              今すぐ完全削除
+                            </button>
+                          </div>
+                        );
+                      })()}
                       <LongPressPreviewCard review={review} />
                     </motion.div>
                   ))}

@@ -20,6 +20,7 @@ function toReview(row: Record<string, unknown>) {
     authorName: row.author_name,
     authorIcon: row.author_icon,
     createdAt: row.created_at,
+    updatedAt: row.updated_at,
     status: row.status,
   };
 }
