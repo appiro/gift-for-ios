@@ -63,7 +63,6 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [cropPx, setCropPx] = useState(300);
-  const [isLandscape, setIsLandscape] = useState(false);
 
   const dragRef = useRef<{ startX: number; startY: number; ox: number; oy: number } | null>(null);
   const pinchRef = useRef<{ lastDist: number } | null>(null);
@@ -110,14 +109,6 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
     syncHistoryUI();
   };
 
-  // Orientation detection
-  useEffect(() => {
-    const update = () => setIsLandscape(window.innerWidth > window.innerHeight);
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, []);
-
   const remeasure = useCallback(() => {
     requestAnimationFrame(() => {
       if (!cropContainerRef.current) return;
@@ -136,7 +127,11 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
     });
   }, []);
 
-  useEffect(() => { remeasure(); }, [isLandscape, remeasure]);
+  // Re-measure on resize (handles orientation change)
+  useEffect(() => {
+    window.addEventListener('resize', remeasure);
+    return () => window.removeEventListener('resize', remeasure);
+  }, [remeasure]);
 
   // Load file
   useEffect(() => {
@@ -243,270 +238,218 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
 
   const imgTransform = `rotate(${rotation}deg) scaleX(${flipH ? -1 : 1}) scaleY(${flipV ? -1 : 1})`;
 
-  // Shared: crop box
-  const cropBoxEvents = {
-    onPointerDown, onPointerMove, onPointerUp,
-    onPointerLeave: onPointerUp,
-    onTouchStart, onTouchMove, onTouchEnd,
-  };
-
-  const cropBoxContent = (
-    <>
-      {sourceUrl && (
-        <img
-          src={sourceUrl}
-          alt="edit"
-          draggable={false}
-          style={{
-            position: 'absolute',
-            width: imgNW * scale,
-            height: imgNH * scale,
-            maxWidth: 'none',
-            maxHeight: 'none',
-            left: offsetX,
-            top: offsetY,
-            transform: imgTransform,
-            transformOrigin: 'center center',
-            filter: filterCss === 'none' ? undefined : filterCss,
-            userSelect: 'none',
-            pointerEvents: 'none',
-          }}
-        />
-      )}
-      {/* Grid lines */}
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-        {['33.3%', '66.6%'].map(p => (
-          <div key={p}>
-            <div style={{ position: 'absolute', left: p, top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.2)' }} />
-            <div style={{ position: 'absolute', top: p, left: 0, right: 0, height: 1, background: 'rgba(255,255,255,0.2)' }} />
-          </div>
-        ))}
-      </div>
-    </>
-  );
-
-  // Shared: undo/redo
-  const undoRedo = (
-    <div className="flex gap-2">
-      {[
-        { label: 'undo', action: undo, disabled: !canUndo, icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
-            <path fillRule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
-            <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
-          </svg>
-        )},
-        { label: 'redo', action: redo, disabled: !canRedo, icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
-            <path fillRule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/>
-            <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/>
-          </svg>
-        )},
-      ].map(({ label, action, disabled, icon }) => (
-        <button key={label} onClick={action} disabled={disabled}
-          className="w-8 h-8 bg-black/60 rounded-lg flex items-center justify-center text-white disabled:opacity-25 active:scale-90 transition-transform">
-          {icon}
-        </button>
-      ))}
-    </div>
-  );
-
-  // Shared: header buttons
-  const headerBtns = (
-    <>
-      <button onClick={onCancel} className="w-8 h-8 flex items-center justify-center text-white">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 16 16">
-          <line x1="2" y1="14" x2="14" y2="2"/><line x1="2" y1="2" x2="14" y2="14"/>
-        </svg>
-      </button>
-      <span className="text-xs font-bold text-white">写真を編集</span>
-      <button onClick={handleConfirm} disabled={processing}
-        className="text-xs font-bold text-primary disabled:opacity-50 px-2">
-        {processing ? '処理中...' : '完了'}
-      </button>
-    </>
-  );
-
-  // Shared: tab bar
-  const tabBar = (
-    <div className="flex border-b border-white/10 flex-shrink-0">
-      {(['zoom', 'angle', 'filter'] as const).map((tab) => (
-        <button key={tab} onClick={() => setActiveTab(tab)}
-          className={`flex-1 py-2 text-xs font-bold border-b-2 transition-colors ${activeTab === tab ? 'border-white text-white' : 'border-transparent text-white/35'}`}>
-          {tab === 'zoom' ? 'ズーム' : tab === 'angle' ? '角度' : 'フィルタ'}
-        </button>
-      ))}
-    </div>
-  );
-
-  // Shared: tab content
-  const tabContent = (
-    <div className="flex-1 flex flex-col justify-center px-4 py-2 min-h-0">
-      {activeTab === 'zoom' && (
-        <div className="flex items-center justify-center gap-6">
-          <button
-            onClick={() => handleScaleChange(scale - minScale * 0.1)}
-            disabled={scale <= minScale + 0.001}
-            className="w-11 h-11 rounded-full bg-white/10 text-white text-2xl font-light flex items-center justify-center disabled:opacity-25 active:scale-90 transition-all"
-          >−</button>
-          <span className="text-white text-sm font-bold w-14 text-center">{zoomPct}%</span>
-          <button
-            onClick={() => handleScaleChange(scale + minScale * 0.1)}
-            disabled={scale >= minScale * 3 - 0.001}
-            className="w-11 h-11 rounded-full bg-white/10 text-white text-2xl font-light flex items-center justify-center disabled:opacity-25 active:scale-90 transition-all"
-          >＋</button>
-        </div>
-      )}
-
-      {activeTab === 'angle' && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-white/50 w-7 flex-shrink-0">−30°</span>
-            <input
-              type="range" min={-30} max={30} step={0.5} value={rotation}
-              onChange={(e) => { const v = Number(e.target.value); setRotation(v); rotationRef.current = v; }}
-              onMouseUp={() => pushHistory({ ...currentSnap(), rotation: rotationRef.current })}
-              onTouchEnd={() => pushHistory({ ...currentSnap(), rotation: rotationRef.current })}
-              className="flex-1 accent-primary"
-            />
-            <span className="text-[10px] text-white/50 w-7 flex-shrink-0 text-right">+30°</span>
-            <span className="text-xs font-bold text-white w-10 text-right flex-shrink-0">
-              {rotation > 0 ? '+' : ''}{rotation.toFixed(1)}°
-            </span>
-          </div>
-          <div className="flex items-center justify-around pt-1">
-            {[
-              { label: '左右反転', active: flipH,
-                action: () => { const v = !flipH; setFlipH(v); pushHistory({ ...currentSnap(), flipH: v }); },
-                icon: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M8 .5a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-1 0V1A.5.5 0 0 1 8 .5M2.646 5.646a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L4.293 8 2.646 6.354a.5.5 0 0 1 0-.708m10.708 0a.5.5 0 0 1 0 .708L11.707 8l1.647 1.646a.5.5 0 0 1-.708.708l-2-2a.5.5 0 0 1 0-.708l2-2a.5.5 0 0 1 .708 0"/></svg>
-              },
-              { label: '上下反転', active: flipV,
-                action: () => { const v = !flipV; setFlipV(v); pushHistory({ ...currentSnap(), flipV: v }); },
-                icon: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 8a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1H1A.5.5 0 0 1 .5 8M5.646 2.646a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L7.293 5 5.646 3.354a.5.5 0 0 1 0-.708m4.708 6a.5.5 0 0 1 0 .708L8.707 11l1.647 1.646a.5.5 0 0 1-.708.708l-2-2a.5.5 0 0 1 0-.708l2-2a.5.5 0 0 1 .708 0"/></svg>
-              },
-            ].map(({ label, action, icon, active }) => (
-              <button key={label} onClick={action}
-                className={`flex flex-col items-center gap-1 px-5 active:scale-90 transition-transform ${active ? 'text-primary' : 'text-white/70'}`}>
-                {icon}
-                <span className="text-[10px] font-bold">{label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'filter' && (
-        <div className="space-y-2">
-          <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-            {FILTER_DEFS.map((f) => (
-              <button key={f.id}
-                onClick={() => { setFilterId(f.id); pushHistory({ ...currentSnap(), filterId: f.id }); }}
-                className={`flex-shrink-0 flex flex-col items-center gap-1 transition-opacity ${filterId === f.id ? 'opacity-100' : 'opacity-50'}`}
-              >
-                <div style={{ width: 46, height: 46, overflow: 'hidden', borderRadius: 7, border: filterId === f.id ? '2px solid white' : '2px solid transparent' }}>
-                  {sourceUrl && (
-                    <img src={sourceUrl} alt={f.label}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', maxWidth: 'none',
-                        filter: buildFilterCss(f, 100) === 'none' ? undefined : buildFilterCss(f, 100) }}
-                    />
-                  )}
-                </div>
-                <span className="text-[9px] font-bold text-white">{f.label}</span>
-              </button>
-            ))}
-          </div>
-          {filterId !== 'normal' && (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-white/50 w-4">弱</span>
-              <input type="range" min={0} max={100} step={1} value={filterStrength}
-                onChange={(e) => { const v = Number(e.target.value); setFilterStrength(v); filterStrengthRef.current = v; }}
-                onMouseUp={() => pushHistory({ ...currentSnap(), filterStrength: filterStrengthRef.current })}
-                onTouchEnd={() => pushHistory({ ...currentSnap(), filterStrength: filterStrengthRef.current })}
-                className="flex-1 accent-primary" />
-              <span className="text-[10px] text-white/50 w-8 text-right">{filterStrength}%</span>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-
-  // ---- Landscape: left=image, right=controls ----
-  if (isLandscape) {
-    // Image panel: square, max 460px (or viewport height), whichever is smaller
-    const imgPanelStyle: React.CSSProperties = {
-      height: '100%',
-      aspectRatio: '1 / 1',
-      maxWidth: 'min(50vw, 460px)',
-      maxHeight: 'min(100%, 460px)',
-      flexShrink: 0,
-      position: 'relative',
-      overflow: 'hidden',
-      cursor: 'grab',
-      touchAction: 'none',
-    };
-
-    return (
-      <div
-        className="fixed inset-0 z-[9999] bg-black flex flex-row items-stretch"
-        style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}
-      >
-        {/* Left: crop box */}
-        <div className="flex items-center justify-center bg-black flex-shrink-0 h-full"
-          style={{ padding: '8px 0', paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-          <div ref={cropContainerRef} style={imgPanelStyle} {...cropBoxEvents}>
-            {cropBoxContent}
-          </div>
-        </div>
-
-        {/* Right: header + tabs */}
-        <div className="flex-1 flex flex-col min-w-0 border-l border-white/10"
-          style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-          <div className="flex items-center justify-between px-3 h-11 flex-shrink-0">
-            {headerBtns}
-          </div>
-          <div className="absolute bottom-3 left-3">{undoRedo}</div>
-          <div className="flex-1 flex flex-col min-h-0 border-t border-white/10">
-            {tabBar}
-            {tabContent}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ---- Portrait: top=header, middle=image, bottom=controls ----
-  // Crop box: square, limited to min(85vw, 440px, available height)
-  const cropBoxWrapperStyle: React.CSSProperties = {
-    width: 'min(85vw, 440px)',
-    aspectRatio: '1 / 1',
-    overflow: 'hidden',
-    position: 'relative',
-    cursor: 'grab',
-    touchAction: 'none',
-  };
-
   return (
-    <div
-      className="fixed inset-0 z-[9999] bg-black flex flex-col"
-      style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 h-11 flex-shrink-0">
-        {headerBtns}
-      </div>
-
-      {/* Image area */}
-      <div className="flex-1 flex items-center justify-center min-h-0 bg-black relative">
-        <div ref={cropContainerRef} style={cropBoxWrapperStyle} {...cropBoxEvents}>
-          {cropBoxContent}
+    // Backdrop — shows page behind
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm">
+      {/* Modal card */}
+      <div
+        className="w-full sm:max-w-[420px] bg-[#1c1c1e] rounded-t-3xl sm:rounded-3xl flex flex-col overflow-hidden"
+        style={{
+          maxHeight: 'calc(100vh - 24px)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
+      >
+        {/* Drag handle (mobile only) */}
+        <div className="flex justify-center pt-2.5 pb-1 sm:hidden flex-shrink-0">
+          <div className="w-9 h-1 rounded-full bg-white/25" />
         </div>
-        <div className="absolute bottom-2 right-3">{undoRedo}</div>
-      </div>
 
-      {/* Controls: fixed height to always fit */}
-      <div className="bg-black flex-shrink-0 border-t border-white/10 flex flex-col" style={{ minHeight: 120, maxHeight: 180 }}>
-        {tabBar}
-        {tabContent}
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 h-10 flex-shrink-0">
+          <button onClick={onCancel} className="w-8 h-8 flex items-center justify-center text-white/70 hover:text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 16 16">
+              <line x1="2" y1="14" x2="14" y2="2"/><line x1="2" y1="2" x2="14" y2="14"/>
+            </svg>
+          </button>
+          <span className="text-xs font-bold text-white">写真を編集</span>
+          <button onClick={handleConfirm} disabled={processing}
+            className="text-xs font-bold text-primary disabled:opacity-40 px-2 py-1">
+            {processing ? '処理中...' : '完了'}
+          </button>
+        </div>
+
+        {/* Crop box
+            CSS min() constrains size:
+            - max 370px wide (sm modal cap)
+            - height-aware: calc(100vh - 220px) ensures controls always fit below
+            The black bg shows only behind the image itself */}
+        <div className="flex items-center justify-center bg-black flex-shrink-0 relative">
+          <div
+            ref={cropContainerRef}
+            style={{
+              width: 'min(100%, 370px, calc(100vh - 220px))',
+              aspectRatio: '1 / 1',
+              overflow: 'hidden',
+              position: 'relative',
+              cursor: 'grab',
+              touchAction: 'none',
+            }}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerLeave={onPointerUp}
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+          >
+            {sourceUrl && (
+              <img
+                src={sourceUrl}
+                alt="edit"
+                draggable={false}
+                style={{
+                  position: 'absolute',
+                  width: imgNW * scale,
+                  height: imgNH * scale,
+                  maxWidth: 'none',
+                  maxHeight: 'none',
+                  left: offsetX,
+                  top: offsetY,
+                  transform: imgTransform,
+                  transformOrigin: 'center center',
+                  filter: filterCss === 'none' ? undefined : filterCss,
+                  userSelect: 'none',
+                  pointerEvents: 'none',
+                }}
+              />
+            )}
+            {/* Grid */}
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+              {['33.3%', '66.6%'].map(p => (
+                <div key={p}>
+                  <div style={{ position: 'absolute', left: p, top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.15)' }} />
+                  <div style={{ position: 'absolute', top: p, left: 0, right: 0, height: 1, background: 'rgba(255,255,255,0.15)' }} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Undo / Redo */}
+          <div className="absolute bottom-2 right-2 flex gap-1.5">
+            {[
+              { label: 'undo', action: undo, disabled: !canUndo, icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                  <path fillRule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
+                  <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
+                </svg>
+              )},
+              { label: 'redo', action: redo, disabled: !canRedo, icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                  <path fillRule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/>
+                  <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/>
+                </svg>
+              )},
+            ].map(({ label, action, disabled, icon }) => (
+              <button key={label} onClick={action} disabled={disabled}
+                className="w-7 h-7 bg-black/60 rounded-md flex items-center justify-center text-white disabled:opacity-25 active:scale-90 transition-transform">
+                {icon}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="flex flex-col flex-shrink-0" style={{ minHeight: 112, maxHeight: 160 }}>
+          {/* Tab bar */}
+          <div className="flex border-b border-white/10 flex-shrink-0">
+            {(['zoom', 'angle', 'filter'] as const).map((tab) => (
+              <button key={tab} onClick={() => setActiveTab(tab)}
+                className={`flex-1 py-2 text-xs font-bold border-b-2 transition-colors ${activeTab === tab ? 'border-white text-white' : 'border-transparent text-white/35'}`}>
+                {tab === 'zoom' ? 'ズーム' : tab === 'angle' ? '角度' : 'フィルタ'}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab content */}
+          <div className="flex-1 flex flex-col justify-center px-4 py-2">
+            {activeTab === 'zoom' && (
+              <div className="flex items-center justify-center gap-6">
+                <button
+                  onClick={() => handleScaleChange(scale - minScale * 0.1)}
+                  disabled={scale <= minScale + 0.001}
+                  className="w-10 h-10 rounded-full bg-white/10 text-white text-xl font-light flex items-center justify-center disabled:opacity-25 active:scale-90 transition-all"
+                >−</button>
+                <span className="text-white text-sm font-bold w-14 text-center">{zoomPct}%</span>
+                <button
+                  onClick={() => handleScaleChange(scale + minScale * 0.1)}
+                  disabled={scale >= minScale * 3 - 0.001}
+                  className="w-10 h-10 rounded-full bg-white/10 text-white text-xl font-light flex items-center justify-center disabled:opacity-25 active:scale-90 transition-all"
+                >＋</button>
+              </div>
+            )}
+
+            {activeTab === 'angle' && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-white/40 w-7 flex-shrink-0">−30°</span>
+                  <input
+                    type="range" min={-30} max={30} step={0.5} value={rotation}
+                    onChange={(e) => { const v = Number(e.target.value); setRotation(v); rotationRef.current = v; }}
+                    onMouseUp={() => pushHistory({ ...currentSnap(), rotation: rotationRef.current })}
+                    onTouchEnd={() => pushHistory({ ...currentSnap(), rotation: rotationRef.current })}
+                    className="flex-1 accent-primary"
+                  />
+                  <span className="text-[10px] text-white/40 w-7 flex-shrink-0 text-right">+30°</span>
+                  <span className="text-xs font-bold text-white w-10 text-right flex-shrink-0">
+                    {rotation > 0 ? '+' : ''}{rotation.toFixed(1)}°
+                  </span>
+                </div>
+                <div className="flex items-center justify-around">
+                  {[
+                    { label: '左右反転', active: flipH,
+                      action: () => { const v = !flipH; setFlipH(v); pushHistory({ ...currentSnap(), flipH: v }); },
+                      icon: <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M8 .5a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-1 0V1A.5.5 0 0 1 8 .5M2.646 5.646a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L4.293 8 2.646 6.354a.5.5 0 0 1 0-.708m10.708 0a.5.5 0 0 1 0 .708L11.707 8l1.647 1.646a.5.5 0 0 1-.708.708l-2-2a.5.5 0 0 1 0-.708l2-2a.5.5 0 0 1 .708 0"/></svg>
+                    },
+                    { label: '上下反転', active: flipV,
+                      action: () => { const v = !flipV; setFlipV(v); pushHistory({ ...currentSnap(), flipV: v }); },
+                      icon: <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 8a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1H1A.5.5 0 0 1 .5 8M5.646 2.646a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L7.293 5 5.646 3.354a.5.5 0 0 1 0-.708m4.708 6a.5.5 0 0 1 0 .708L8.707 11l1.647 1.646a.5.5 0 0 1-.708.708l-2-2a.5.5 0 0 1 0-.708l2-2a.5.5 0 0 1 .708 0"/></svg>
+                    },
+                  ].map(({ label, action, icon, active }) => (
+                    <button key={label} onClick={action}
+                      className={`flex flex-col items-center gap-1 px-5 active:scale-90 transition-transform ${active ? 'text-primary' : 'text-white/60'}`}>
+                      {icon}
+                      <span className="text-[10px] font-bold">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'filter' && (
+              <div className="space-y-2">
+                <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+                  {FILTER_DEFS.map((f) => (
+                    <button key={f.id}
+                      onClick={() => { setFilterId(f.id); pushHistory({ ...currentSnap(), filterId: f.id }); }}
+                      className={`flex-shrink-0 flex flex-col items-center gap-1 transition-opacity ${filterId === f.id ? 'opacity-100' : 'opacity-50'}`}
+                    >
+                      <div style={{ width: 44, height: 44, overflow: 'hidden', borderRadius: 7, border: filterId === f.id ? '2px solid white' : '2px solid transparent' }}>
+                        {sourceUrl && (
+                          <img src={sourceUrl} alt={f.label}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', maxWidth: 'none',
+                              filter: buildFilterCss(f, 100) === 'none' ? undefined : buildFilterCss(f, 100) }}
+                          />
+                        )}
+                      </div>
+                      <span className="text-[9px] font-bold text-white">{f.label}</span>
+                    </button>
+                  ))}
+                </div>
+                {filterId !== 'normal' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-white/40 w-4">弱</span>
+                    <input type="range" min={0} max={100} step={1} value={filterStrength}
+                      onChange={(e) => { const v = Number(e.target.value); setFilterStrength(v); filterStrengthRef.current = v; }}
+                      onMouseUp={() => pushHistory({ ...currentSnap(), filterStrength: filterStrengthRef.current })}
+                      onTouchEnd={() => pushHistory({ ...currentSnap(), filterStrength: filterStrengthRef.current })}
+                      className="flex-1 accent-primary" />
+                    <span className="text-[10px] text-white/40 w-8 text-right">{filterStrength}%</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
