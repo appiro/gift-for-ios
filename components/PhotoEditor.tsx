@@ -33,7 +33,11 @@ function buildFilterCss(def: FilterDef, strength: number): string {
 }
 
 const OUTPUT_SIZE = 900;
-const CROP = 300;
+
+type Snapshot = {
+  rotation: number; flipH: boolean; flipV: boolean;
+  filterId: string; filterStrength: number;
+};
 
 interface Props {
   file: File;
@@ -55,10 +59,63 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
   const [flipH, setFlipH] = useState(false);
   const [flipV, setFlipV] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'transform' | 'filter'>('transform');
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const [cropPx, setCropPx] = useState(340);
 
   const dragRef = useRef<{ startX: number; startY: number; ox: number; oy: number } | null>(null);
   const pinchRef = useRef<{ lastDist: number } | null>(null);
   const processedUrlRef = useRef('');
+  const cropContainerRef = useRef<HTMLDivElement>(null);
+  const filterStrengthRef = useRef(100);
+
+  // History via refs to avoid stale closures
+  const histRef = useRef<Snapshot[]>([{ rotation: 0, flipH: false, flipV: false, filterId: 'normal', filterStrength: 100 }]);
+  const histIdxRef = useRef(0);
+
+  const syncHistoryUI = () => {
+    setCanUndo(histIdxRef.current > 0);
+    setCanRedo(histIdxRef.current < histRef.current.length - 1);
+  };
+
+  const pushHistory = (snap: Snapshot) => {
+    histRef.current = histRef.current.slice(0, histIdxRef.current + 1);
+    histRef.current.push(snap);
+    histIdxRef.current = histRef.current.length - 1;
+    syncHistoryUI();
+  };
+
+  const applySnap = (snap: Snapshot) => {
+    setRotation(snap.rotation);
+    setFlipH(snap.flipH);
+    setFlipV(snap.flipV);
+    setFilterId(snap.filterId);
+    setFilterStrength(snap.filterStrength);
+    filterStrengthRef.current = snap.filterStrength;
+  };
+
+  const undo = () => {
+    if (histIdxRef.current <= 0) return;
+    histIdxRef.current--;
+    applySnap(histRef.current[histIdxRef.current]);
+    syncHistoryUI();
+  };
+
+  const redo = () => {
+    if (histIdxRef.current >= histRef.current.length - 1) return;
+    histIdxRef.current++;
+    applySnap(histRef.current[histIdxRef.current]);
+    syncHistoryUI();
+  };
+
+  // Measure crop container after mount
+  useEffect(() => {
+    if (cropContainerRef.current) {
+      const w = cropContainerRef.current.offsetWidth;
+      if (w > 0) setCropPx(w);
+    }
+  }, []);
 
   // Load original file
   useEffect(() => {
@@ -67,9 +124,9 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  // Rebuild processed image when source/rotation/flip changes
+  // Rebuild processed image on rotation/flip change
   useEffect(() => {
-    if (!sourceUrl) return;
+    if (!sourceUrl || cropPx === 0) return;
     let cancelled = false;
     const img = new Image();
     img.onload = () => {
@@ -78,8 +135,7 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
       const w = rotated90 ? img.naturalHeight : img.naturalWidth;
       const h = rotated90 ? img.naturalWidth : img.naturalHeight;
       const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
+      canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext('2d')!;
       ctx.translate(w / 2, h / 2);
       ctx.rotate((rotation * Math.PI) / 180);
@@ -91,37 +147,33 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
         URL.revokeObjectURL(processedUrlRef.current);
         processedUrlRef.current = url;
         setProcessedUrl(url);
-        setImgNW(w);
-        setImgNH(h);
-        const minS = Math.max(CROP / w, CROP / h);
+        setImgNW(w); setImgNH(h);
+        const minS = Math.max(cropPx / w, cropPx / h);
         setScale(minS);
-        setOffsetX((CROP - w * minS) / 2);
-        setOffsetY((CROP - h * minS) / 2);
+        setOffsetX((cropPx - w * minS) / 2);
+        setOffsetY((cropPx - h * minS) / 2);
       });
     };
     img.src = sourceUrl;
     return () => { cancelled = true; };
-  }, [sourceUrl, rotation, flipH, flipV]);
+  }, [sourceUrl, rotation, flipH, flipV, cropPx]);
 
-  // Cleanup processedUrl on unmount
   useEffect(() => () => URL.revokeObjectURL(processedUrlRef.current), []);
 
-  const minScale = Math.max(CROP / imgNW, CROP / imgNH);
+  const minScale = Math.max(cropPx / imgNW, cropPx / imgNH);
 
   const clampOffset = useCallback(
     (ox: number, oy: number, s: number) => ({
-      x: Math.min(0, Math.max(CROP - imgNW * s, ox)),
-      y: Math.min(0, Math.max(CROP - imgNH * s, oy)),
+      x: Math.min(0, Math.max(cropPx - imgNW * s, ox)),
+      y: Math.min(0, Math.max(cropPx - imgNH * s, oy)),
     }),
-    [imgNW, imgNH]
+    [imgNW, imgNH, cropPx]
   );
 
   const handleScaleChange = (newScale: number) => {
     const clamped = Math.max(minScale, Math.min(minScale * 3, newScale));
     const { x, y } = clampOffset(offsetX, offsetY, clamped);
-    setScale(clamped);
-    setOffsetX(x);
-    setOffsetY(y);
+    setScale(clamped); setOffsetX(x); setOffsetY(y);
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -135,12 +187,10 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
       dragRef.current.oy + e.clientY - dragRef.current.startY,
       scale
     );
-    setOffsetX(x);
-    setOffsetY(y);
+    setOffsetX(x); setOffsetY(y);
   };
   const onPointerUp = () => { dragRef.current = null; };
 
-  // Pinch-to-zoom
   const onTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
       const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -160,22 +210,24 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
   };
   const onTouchEnd = () => { pinchRef.current = null; };
 
+  const currentSnap = (): Snapshot => ({
+    rotation, flipH, flipV, filterId, filterStrength: filterStrengthRef.current,
+  });
+
   const filterDef = FILTER_DEFS.find(f => f.id === filterId) ?? FILTER_DEFS[0];
   const filterCss = buildFilterCss(filterDef, filterStrength);
+  const zoomPct = Math.round((scale / minScale) * 100);
 
   const handleConfirm = async () => {
     setProcessing(true);
     const img = new Image();
     img.src = processedUrl;
     await new Promise<void>((res) => { img.onload = () => res(); if (img.complete) res(); });
-
     const canvas = document.createElement('canvas');
-    canvas.width = OUTPUT_SIZE;
-    canvas.height = OUTPUT_SIZE;
+    canvas.width = OUTPUT_SIZE; canvas.height = OUTPUT_SIZE;
     const ctx = canvas.getContext('2d')!;
     if (filterCss !== 'none') ctx.filter = filterCss;
-    ctx.drawImage(img, -offsetX / scale, -offsetY / scale, CROP / scale, CROP / scale, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
-
+    ctx.drawImage(img, -offsetX / scale, -offsetY / scale, cropPx / scale, cropPx / scale, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
     canvas.toBlob((blob) => {
       if (!blob) { setProcessing(false); return; }
       onConfirm(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }));
@@ -183,155 +235,186 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-sm flex flex-col overflow-hidden" style={{ maxHeight: '95dvh' }}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border-light flex-shrink-0">
-          <h3 className="text-base font-bold text-text-main">写真を編集</h3>
-          <button onClick={onCancel} className="w-8 h-8 flex items-center justify-center rounded-full bg-background-soft text-text-sub">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="2" y1="14" x2="14" y2="2"/><line x1="2" y1="2" x2="14" y2="14"/>
-            </svg>
-          </button>
-        </div>
+    <div
+      className="fixed inset-0 z-[300] bg-black flex flex-col"
+      style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
+        <button onClick={onCancel} className="w-9 h-9 flex items-center justify-center text-white">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 16 16">
+            <line x1="2" y1="14" x2="14" y2="2"/><line x1="2" y1="2" x2="14" y2="14"/>
+          </svg>
+        </button>
+        <span className="text-sm font-bold text-white">写真を編集</span>
+        <button onClick={handleConfirm} disabled={processing}
+          className="text-sm font-bold text-primary disabled:opacity-50 px-2">
+          {processing ? '処理中...' : '完了'}
+        </button>
+      </div>
 
-        <div className="overflow-y-auto flex-1">
-          {/* Crop area */}
-          <div className="flex justify-center py-3 bg-gray-100">
-            <div
-              style={{ width: CROP, height: CROP, overflow: 'hidden', position: 'relative', cursor: 'grab', userSelect: 'none', touchAction: 'none', borderRadius: 8 }}
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
-              onPointerLeave={onPointerUp}
-              onTouchStart={onTouchStart}
-              onTouchMove={onTouchMove}
-              onTouchEnd={onTouchEnd}
-            >
-              {processedUrl && (
-                <img
-                  src={processedUrl}
-                  alt="edit"
-                  draggable={false}
-                  style={{
-                    position: 'absolute',
-                    width: imgNW * scale,
-                    height: imgNH * scale,
-                    left: offsetX,
-                    top: offsetY,
-                    filter: filterCss === 'none' ? undefined : filterCss,
-                    userSelect: 'none',
-                    pointerEvents: 'none',
-                  }}
-                />
-              )}
-              {/* Grid overlay */}
-              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-                {['33.3%', '66.6%'].map(p => (
-                  <div key={p}>
-                    <div style={{ position: 'absolute', left: p, top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.35)' }} />
-                    <div style={{ position: 'absolute', top: p, left: 0, right: 0, height: 1, background: 'rgba(255,255,255,0.35)' }} />
-                  </div>
-                ))}
+      {/* Image area */}
+      <div className="flex-1 relative bg-black flex items-center justify-center min-h-0">
+        {/* Crop container - full width square */}
+        <div
+          ref={cropContainerRef}
+          style={{ width: '100%', aspectRatio: '1 / 1', overflow: 'hidden', position: 'relative', cursor: 'grab', touchAction: 'none', maxHeight: '100%', maxWidth: '100%' }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerLeave={onPointerUp}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
+          {processedUrl && (
+            <img
+              src={processedUrl}
+              alt="edit"
+              draggable={false}
+              style={{
+                position: 'absolute',
+                width: imgNW * scale,
+                height: imgNH * scale,
+                maxWidth: 'none',   // Tailwindの max-width: 100% を無効化（縦伸び防止）
+                maxHeight: 'none',
+                left: offsetX,
+                top: offsetY,
+                filter: filterCss === 'none' ? undefined : filterCss,
+                userSelect: 'none',
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+          {/* Grid overlay */}
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+            {['33.3%', '66.6%'].map(p => (
+              <div key={p}>
+                <div style={{ position: 'absolute', left: p, top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.2)' }} />
+                <div style={{ position: 'absolute', top: p, left: 0, right: 0, height: 1, background: 'rgba(255,255,255,0.2)' }} />
               </div>
-            </div>
-          </div>
-
-          {/* Transform controls */}
-          <div className="flex items-center justify-around px-4 py-2.5 border-b border-border-light">
-            {[
-              { label: '左回転', action: () => setRotation(r => (r - 90 + 360) % 360), active: false, icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                  <path fillRule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
-                  <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
-                </svg>
-              )},
-              { label: '右回転', action: () => setRotation(r => (r + 90) % 360), active: false, icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                  <path fillRule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/>
-                  <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/>
-                </svg>
-              )},
-              { label: '左右反転', action: () => setFlipH(v => !v), active: flipH, icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                  <path d="M8 .5a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-1 0V1A.5.5 0 0 1 8 .5M2.646 5.646a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L4.293 8 2.646 6.354a.5.5 0 0 1 0-.708m10.708 0a.5.5 0 0 1 0 .708L11.707 8l1.647 1.646a.5.5 0 0 1-.708.708l-2-2a.5.5 0 0 1 0-.708l2-2a.5.5 0 0 1 .708 0"/>
-                </svg>
-              )},
-              { label: '上下反転', action: () => setFlipV(v => !v), active: flipV, icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                  <path d="M8 .5a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-1 0V1A.5.5 0 0 1 8 .5" style={{ transform: 'rotate(90deg)', transformOrigin: 'center' }}/>
-                  <path d="M.5 8a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1H1A.5.5 0 0 1 .5 8M5.646 2.646a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L7.293 5 5.646 3.354a.5.5 0 0 1 0-.708m4.708 6a.5.5 0 0 1 0 .708L8.707 11l1.647 1.646a.5.5 0 0 1-.708.708l-2-2a.5.5 0 0 1 0-.708l2-2a.5.5 0 0 1 .708 0"/>
-                </svg>
-              )},
-            ].map(({ label, action, active, icon }) => (
-              <button
-                key={label}
-                onClick={action}
-                className={`flex flex-col items-center gap-1 p-2 rounded-xl active:scale-95 transition-all ${active ? 'bg-primary/10 text-primary' : 'text-text-sub'}`}
-              >
-                {icon}
-                <span className="text-[9px] font-bold">{label}</span>
-              </button>
             ))}
           </div>
-
-          {/* Zoom slider */}
-          <div className="px-5 py-2.5 flex items-center gap-3 border-b border-border-light">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" className="text-text-sub flex-shrink-0" viewBox="0 0 16 16">
-              <path d="M6.5 12a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11M13 6.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0"/>
-              <path d="M10.344 11.742q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1 6.5 6.5 0 0 1-1.398 1.4z"/>
-              <path fillRule="evenodd" d="M6.5 3a.5.5 0 0 1 .5.5V6h2.5a.5.5 0 0 1 0 1H7v2.5a.5.5 0 0 1-1 0V7H3.5a.5.5 0 0 1 0-1H6V3.5a.5.5 0 0 1 .5-.5"/>
-            </svg>
-            <input type="range" min={minScale} max={minScale * 3} step={0.01} value={scale}
-              onChange={(e) => handleScaleChange(Number(e.target.value))} className="flex-1 accent-primary" />
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" className="text-text-sub flex-shrink-0" viewBox="0 0 16 16">
-              <path d="M6.5 12a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11M13 6.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0"/>
-              <path d="M10.344 11.742q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1 6.5 6.5 0 0 1-1.398 1.4z"/>
-              <path fillRule="evenodd" d="M6.5 3a.5.5 0 0 1 .5.5V6h2.5a.5.5 0 0 1 0 1H7v2.5a.5.5 0 0 1-1 0V7H3.5a.5.5 0 0 1 0-1H6V3.5a.5.5 0 0 1 .5-.5"/>
-            </svg>
-          </div>
-
-          {/* Filter selector */}
-          <div className="px-4 py-3">
-            <p className="text-[10px] font-bold text-text-sub uppercase tracking-wider mb-2">フィルター</p>
-            <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-              {FILTER_DEFS.map((f) => (
-                <button key={f.id} onClick={() => setFilterId(f.id)}
-                  className={`flex-shrink-0 flex flex-col items-center gap-1 p-1 rounded-xl transition-all ${filterId === f.id ? 'ring-2 ring-primary bg-primary/5' : ''}`}
-                >
-                  <div style={{ width: 52, height: 52, overflow: 'hidden', borderRadius: 8 }}>
-                    {processedUrl && (
-                      <img src={processedUrl} alt={f.label}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', filter: buildFilterCss(f, 100) === 'none' ? undefined : buildFilterCss(f, 100) }}
-                      />
-                    )}
-                  </div>
-                  <span className={`text-[10px] font-bold ${filterId === f.id ? 'text-primary' : 'text-text-sub'}`}>{f.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Filter strength slider */}
-            {filterId !== 'normal' && (
-              <div className="flex items-center gap-3 mt-3">
-                <span className="text-[10px] text-text-sub w-4">弱</span>
-                <input type="range" min={0} max={100} step={1} value={filterStrength}
-                  onChange={(e) => setFilterStrength(Number(e.target.value))} className="flex-1 accent-primary" />
-                <span className="text-[10px] text-text-sub w-8 text-right">{filterStrength}%</span>
-              </div>
-            )}
-          </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-3 px-5 py-3 border-t border-border-light flex-shrink-0">
-          <button onClick={onCancel} className="flex-1 py-2.5 border border-border-light rounded-xl text-sm font-bold text-text-sub">
-            キャンセル
-          </button>
-          <button onClick={handleConfirm} disabled={processing}
-            className="flex-1 py-2.5 bg-primary text-white rounded-xl text-sm font-bold disabled:opacity-60">
-            {processing ? '処理中...' : 'この内容で確定'}
-          </button>
+        {/* Undo / Redo */}
+        <div className="absolute bottom-3 right-3 flex gap-2">
+          {[
+            { label: 'undo', action: undo, disabled: !canUndo, icon: (
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path fillRule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
+                <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
+              </svg>
+            )},
+            { label: 'redo', action: redo, disabled: !canRedo, icon: (
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path fillRule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/>
+                <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/>
+              </svg>
+            )},
+          ].map(({ label, action, disabled, icon }) => (
+            <button key={label} onClick={action} disabled={disabled}
+              className="w-9 h-9 bg-black/60 rounded-lg flex items-center justify-center text-white disabled:opacity-25 active:scale-90 transition-transform">
+              {icon}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tab bar */}
+      <div className="bg-black flex-shrink-0 border-t border-white/10">
+        {/* Tabs */}
+        <div className="flex">
+          {(['transform', 'filter'] as const).map((tab) => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-3 text-xs font-bold border-t-2 transition-colors ${activeTab === tab ? 'border-white text-white' : 'border-transparent text-white/35'}`}>
+              {tab === 'transform' ? '変形' : 'フィルタ'}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab content */}
+        <div className="px-4 py-4 min-h-[130px]">
+          {activeTab === 'transform' && (
+            <div className="space-y-4">
+              {/* Rotate & Flip */}
+              <div className="flex items-center justify-around">
+                {[
+                  { label: '左回転', active: false,
+                    action: () => { const r = (rotation - 90 + 360) % 360; setRotation(r); pushHistory({ ...currentSnap(), rotation: r }); },
+                    icon: <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16"><path fillRule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/></svg>
+                  },
+                  { label: '右回転', active: false,
+                    action: () => { const r = (rotation + 90) % 360; setRotation(r); pushHistory({ ...currentSnap(), rotation: r }); },
+                    icon: <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16"><path fillRule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>
+                  },
+                  { label: '左右反転', active: flipH,
+                    action: () => { const v = !flipH; setFlipH(v); pushHistory({ ...currentSnap(), flipH: v }); },
+                    icon: <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16"><path d="M8 .5a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-1 0V1A.5.5 0 0 1 8 .5M2.646 5.646a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L4.293 8 2.646 6.354a.5.5 0 0 1 0-.708m10.708 0a.5.5 0 0 1 0 .708L11.707 8l1.647 1.646a.5.5 0 0 1-.708.708l-2-2a.5.5 0 0 1 0-.708l2-2a.5.5 0 0 1 .708 0"/></svg>
+                  },
+                  { label: '上下反転', active: flipV,
+                    action: () => { const v = !flipV; setFlipV(v); pushHistory({ ...currentSnap(), flipV: v }); },
+                    icon: <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 8a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1H1A.5.5 0 0 1 .5 8M5.646 2.646a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L7.293 5 5.646 3.354a.5.5 0 0 1 0-.708m4.708 6a.5.5 0 0 1 0 .708L8.707 11l1.647 1.646a.5.5 0 0 1-.708.708l-2-2a.5.5 0 0 1 0-.708l2-2a.5.5 0 0 1 .708 0"/></svg>
+                  },
+                ].map(({ label, action, icon, active }) => (
+                  <button key={label} onClick={action}
+                    className={`flex flex-col items-center gap-1.5 px-2 active:scale-90 transition-transform ${active ? 'text-primary' : 'text-white/70'}`}>
+                    {icon}
+                    <span className="text-[10px] font-bold">{label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Zoom +/- */}
+              <div className="flex items-center justify-center gap-6">
+                <button
+                  onClick={() => handleScaleChange(scale / 1.1)}
+                  disabled={scale <= minScale + 0.001}
+                  className="w-11 h-11 rounded-full bg-white/10 text-white text-2xl font-light flex items-center justify-center disabled:opacity-25 active:scale-90 transition-all"
+                >−</button>
+                <span className="text-white text-sm font-bold w-14 text-center">{zoomPct}%</span>
+                <button
+                  onClick={() => handleScaleChange(scale * 1.1)}
+                  disabled={scale >= minScale * 3 - 0.001}
+                  className="w-11 h-11 rounded-full bg-white/10 text-white text-2xl font-light flex items-center justify-center disabled:opacity-25 active:scale-90 transition-all"
+                >＋</button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'filter' && (
+            <div className="space-y-3">
+              <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-1">
+                {FILTER_DEFS.map((f) => (
+                  <button key={f.id}
+                    onClick={() => { setFilterId(f.id); pushHistory({ ...currentSnap(), filterId: f.id }); }}
+                    className={`flex-shrink-0 flex flex-col items-center gap-1.5 transition-opacity ${filterId === f.id ? 'opacity-100' : 'opacity-50'}`}
+                  >
+                    <div style={{ width: 58, height: 58, overflow: 'hidden', borderRadius: 8, border: filterId === f.id ? '2px solid white' : '2px solid transparent' }}>
+                      {processedUrl && (
+                        <img src={processedUrl} alt={f.label}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', maxWidth: 'none',
+                            filter: buildFilterCss(f, 100) === 'none' ? undefined : buildFilterCss(f, 100) }}
+                        />
+                      )}
+                    </div>
+                    <span className="text-[10px] font-bold text-white">{f.label}</span>
+                  </button>
+                ))}
+              </div>
+              {filterId !== 'normal' && (
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] text-white/50 w-4">弱</span>
+                  <input type="range" min={0} max={100} step={1} value={filterStrength}
+                    onChange={(e) => { const v = Number(e.target.value); setFilterStrength(v); filterStrengthRef.current = v; }}
+                    onMouseUp={() => pushHistory({ ...currentSnap(), filterStrength: filterStrengthRef.current })}
+                    onTouchEnd={() => pushHistory({ ...currentSnap(), filterStrength: filterStrengthRef.current })}
+                    className="flex-1 accent-primary" />
+                  <span className="text-[10px] text-white/50 w-8 text-right">{filterStrength}%</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
