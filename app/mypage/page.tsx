@@ -735,27 +735,15 @@ export default function MyPage() {
                         削除
                       </button>
 
-                      <button
-                        onClick={() => toggleDraft(review.id)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${
-                          draftStatuses[review.id] === "published"
-                            ? "bg-primary/10 border-primary/40 text-primary hover:bg-[#d00000]/10 hover:border-[#d00000]/40 hover:text-[#d00000]"
-                            : "bg-background-soft border-border-light text-text-sub hover:bg-primary/10 hover:border-primary/40 hover:text-primary"
-                        }`}
-                      >
-                        {draftStatuses[review.id] === "published" ? (
-                          <>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/></svg>
-                            公開中
-                          </>
-                        ) : (
-                          <>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="m10.79 12.912-1.614-1.615a3.5 3.5 0 0 1-4.474-4.474l-2.06-2.06C.938 6.278 0 8 0 8s3 5.5 8 5.5a7 7 0 0 0 2.79-.588M5.21 3.088A7 7 0 0 1 8 2.5c5 0 8 5.5 8 5.5s-.939 1.721-2.641 3.238l-2.062-2.062a3.5 3.5 0 0 0-4.474-4.474zM5.525 7.646a2.5 2.5 0 0 0 2.829 2.829zm4.95.708-2.829-2.83a2.5 2.5 0 0 1 2.829 2.829zm3.171 6-12-12 .708-.708 12 12z"/></svg>
-                            非公開
-                          </>
-                        )}
-                      </button>
-                      <span className="text-[9px] text-text-sub/60">タップで切替</span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[10px] text-text-sub/70 font-bold">
+                          {draftStatuses[review.id] === "published" ? "公開中" : "非公開"}
+                        </span>
+                        <SlideToggle
+                          isOn={draftStatuses[review.id] === "published"}
+                          onToggle={() => toggleDraft(review.id)}
+                        />
+                      </div>
                     </div>
                   </motion.div>
                 ))}
