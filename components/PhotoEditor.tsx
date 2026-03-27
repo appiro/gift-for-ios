@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 
 interface FilterDef {
   id: string; label: string;
@@ -45,7 +46,7 @@ interface Props {
   onCancel: () => void;
 }
 
-export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
+function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
   const [filterId, setFilterId] = useState('normal');
   const [filterStrength, setFilterStrength] = useState(100);
   const [offsetX, setOffsetX] = useState(0);
@@ -117,10 +118,7 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  // Re-measure + re-fit when orientation changes
   const remeasure = useCallback(() => {
-    if (!cropContainerRef.current) return;
-    // Wait one frame for layout to settle
     requestAnimationFrame(() => {
       if (!cropContainerRef.current) return;
       const w = cropContainerRef.current.offsetWidth;
@@ -245,30 +243,15 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
 
   const imgTransform = `rotate(${rotation}deg) scaleX(${flipH ? -1 : 1}) scaleY(${flipV ? -1 : 1})`;
 
-  // ---- Shared sub-components ----
+  // Shared: crop box
+  const cropBoxEvents = {
+    onPointerDown, onPointerMove, onPointerUp,
+    onPointerLeave: onPointerUp,
+    onTouchStart, onTouchMove, onTouchEnd,
+  };
 
-  const CropBox = (
-    <div
-      ref={cropContainerRef}
-      style={{
-        width: '100%',
-        aspectRatio: '1 / 1',
-        overflow: 'hidden',
-        position: 'relative',
-        cursor: 'grab',
-        touchAction: 'none',
-        maxHeight: '100%',
-        maxWidth: '100%',
-        flexShrink: 0,
-      }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerLeave={onPointerUp}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-    >
+  const cropBoxContent = (
+    <>
       {sourceUrl && (
         <img
           src={sourceUrl}
@@ -299,10 +282,11 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
           </div>
         ))}
       </div>
-    </div>
+    </>
   );
 
-  const UndoRedo = (
+  // Shared: undo/redo
+  const undoRedo = (
     <div className="flex gap-2">
       {[
         { label: 'undo', action: undo, disabled: !canUndo, icon: (
@@ -326,8 +310,25 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
     </div>
   );
 
-  const TabBar = (
-    <div className="flex border-b border-white/10">
+  // Shared: header buttons
+  const headerBtns = (
+    <>
+      <button onClick={onCancel} className="w-8 h-8 flex items-center justify-center text-white">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 16 16">
+          <line x1="2" y1="14" x2="14" y2="2"/><line x1="2" y1="2" x2="14" y2="14"/>
+        </svg>
+      </button>
+      <span className="text-xs font-bold text-white">写真を編集</span>
+      <button onClick={handleConfirm} disabled={processing}
+        className="text-xs font-bold text-primary disabled:opacity-50 px-2">
+        {processing ? '処理中...' : '完了'}
+      </button>
+    </>
+  );
+
+  // Shared: tab bar
+  const tabBar = (
+    <div className="flex border-b border-white/10 flex-shrink-0">
       {(['zoom', 'angle', 'filter'] as const).map((tab) => (
         <button key={tab} onClick={() => setActiveTab(tab)}
           className={`flex-1 py-2 text-xs font-bold border-b-2 transition-colors ${activeTab === tab ? 'border-white text-white' : 'border-transparent text-white/35'}`}>
@@ -337,8 +338,9 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
     </div>
   );
 
-  const TabContent = (
-    <div className="flex-1 flex flex-col justify-center px-4 py-2">
+  // Shared: tab content
+  const tabContent = (
+    <div className="flex-1 flex flex-col justify-center px-4 py-2 min-h-0">
       {activeTab === 'zoom' && (
         <div className="flex items-center justify-center gap-6">
           <button
@@ -428,83 +430,91 @@ export default function PhotoEditor({ file, onConfirm, onCancel }: Props) {
     </div>
   );
 
-  // ---- Landscape layout ----
+  // ---- Landscape: left=image, right=controls ----
   if (isLandscape) {
+    // Image panel: square, max 460px (or viewport height), whichever is smaller
+    const imgPanelStyle: React.CSSProperties = {
+      height: '100%',
+      aspectRatio: '1 / 1',
+      maxWidth: 'min(50vw, 460px)',
+      maxHeight: 'min(100%, 460px)',
+      flexShrink: 0,
+      position: 'relative',
+      overflow: 'hidden',
+      cursor: 'grab',
+      touchAction: 'none',
+    };
+
     return (
       <div
-        className="fixed inset-0 z-[300] bg-black flex flex-row"
+        className="fixed inset-0 z-[9999] bg-black flex flex-row items-stretch"
         style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}
       >
-        {/* Left: square crop box */}
-        <div className="relative flex items-center justify-center bg-black flex-shrink-0"
-          style={{ height: '100%', aspectRatio: '1 / 1' }}>
-          {CropBox}
-          <div className="absolute bottom-2 right-2">{UndoRedo}</div>
+        {/* Left: crop box */}
+        <div className="flex items-center justify-center bg-black flex-shrink-0 h-full"
+          style={{ padding: '8px 0', paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div ref={cropContainerRef} style={imgPanelStyle} {...cropBoxEvents}>
+            {cropBoxContent}
+          </div>
         </div>
 
         {/* Right: header + tabs */}
-        <div className="flex-1 flex flex-col min-w-0"
+        <div className="flex-1 flex flex-col min-w-0 border-l border-white/10"
           style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 h-11 flex-shrink-0">
-            <button onClick={onCancel} className="w-8 h-8 flex items-center justify-center text-white">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 16 16">
-                <line x1="2" y1="14" x2="14" y2="2"/><line x1="2" y1="2" x2="14" y2="14"/>
-              </svg>
-            </button>
-            <span className="text-xs font-bold text-white">写真を編集</span>
-            <button onClick={handleConfirm} disabled={processing}
-              className="text-xs font-bold text-primary disabled:opacity-50 px-2">
-              {processing ? '処理中...' : '完了'}
-            </button>
+          <div className="flex items-center justify-between px-3 h-11 flex-shrink-0">
+            {headerBtns}
           </div>
-          {/* Tab bar + content */}
+          <div className="absolute bottom-3 left-3">{undoRedo}</div>
           <div className="flex-1 flex flex-col min-h-0 border-t border-white/10">
-            {TabBar}
-            {TabContent}
+            {tabBar}
+            {tabContent}
           </div>
         </div>
       </div>
     );
   }
 
-  // ---- Portrait layout ----
+  // ---- Portrait: top=header, middle=image, bottom=controls ----
+  // Crop box: square, limited to min(85vw, 440px, available height)
+  const cropBoxWrapperStyle: React.CSSProperties = {
+    width: 'min(85vw, 440px)',
+    aspectRatio: '1 / 1',
+    overflow: 'hidden',
+    position: 'relative',
+    cursor: 'grab',
+    touchAction: 'none',
+  };
+
   return (
     <div
-      className="fixed inset-0 z-[300] bg-black flex flex-col"
+      className="fixed inset-0 z-[9999] bg-black flex flex-col"
       style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 h-11 flex-shrink-0">
-        <button onClick={onCancel} className="w-8 h-8 flex items-center justify-center text-white">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 16 16">
-            <line x1="2" y1="14" x2="14" y2="2"/><line x1="2" y1="2" x2="14" y2="14"/>
-          </svg>
-        </button>
-        <span className="text-xs font-bold text-white">写真を編集</span>
-        <button onClick={handleConfirm} disabled={processing}
-          className="text-xs font-bold text-primary disabled:opacity-50 px-2">
-          {processing ? '処理中...' : '完了'}
-        </button>
+        {headerBtns}
       </div>
 
-      {/* Image area - crop box limited so controls always fit */}
-      <div className="flex-1 relative flex items-center justify-center min-h-0 bg-black">
-        <div className="relative w-full flex items-center justify-center"
-          style={{ maxHeight: '100%' }}>
-          {/* Crop box: square, max 80vw so it doesn't eat all the space */}
-          <div style={{ width: 'min(80vw, 100%)', maxHeight: '100%' }}>
-            {CropBox}
-          </div>
+      {/* Image area */}
+      <div className="flex-1 flex items-center justify-center min-h-0 bg-black relative">
+        <div ref={cropContainerRef} style={cropBoxWrapperStyle} {...cropBoxEvents}>
+          {cropBoxContent}
         </div>
-        <div className="absolute bottom-2 right-3">{UndoRedo}</div>
+        <div className="absolute bottom-2 right-3">{undoRedo}</div>
       </div>
 
-      {/* Controls */}
-      <div className="bg-black flex-shrink-0 border-t border-white/10 flex flex-col" style={{ minHeight: 120 }}>
-        {TabBar}
-        {TabContent}
+      {/* Controls: fixed height to always fit */}
+      <div className="bg-black flex-shrink-0 border-t border-white/10 flex flex-col" style={{ minHeight: 120, maxHeight: 180 }}>
+        {tabBar}
+        {tabContent}
       </div>
     </div>
   );
+}
+
+export default function PhotoEditor(props: Props) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  if (!mounted) return null;
+  return createPortal(<PhotoEditorInner {...props} />, document.body);
 }
