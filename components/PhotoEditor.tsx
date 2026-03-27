@@ -320,14 +320,22 @@ function PhotoEditorInner({ file, onConfirm, onCancel }: Props) {
                 }}
               />
             )}
-            {/* Grid */}
+            {/* Grid + crop frame */}
             <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+              {/* Grid lines */}
               {['33.3%', '66.6%'].map(p => (
                 <div key={p}>
-                  <div style={{ position: 'absolute', left: p, top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.15)' }} />
-                  <div style={{ position: 'absolute', top: p, left: 0, right: 0, height: 1, background: 'rgba(255,255,255,0.15)' }} />
+                  <div style={{ position: 'absolute', left: p, top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,0.18)' }} />
+                  <div style={{ position: 'absolute', top: p, left: 0, right: 0, height: 1, background: 'rgba(255,255,255,0.18)' }} />
                 </div>
               ))}
+              {/* Perimeter border */}
+              <div style={{ position: 'absolute', inset: 0, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.55)' }} />
+              {/* Corner handles */}
+              <div style={{ position: 'absolute', top: 0, left: 0, width: 22, height: 22, borderTop: '3px solid white', borderLeft: '3px solid white' }} />
+              <div style={{ position: 'absolute', top: 0, right: 0, width: 22, height: 22, borderTop: '3px solid white', borderRight: '3px solid white' }} />
+              <div style={{ position: 'absolute', bottom: 0, left: 0, width: 22, height: 22, borderBottom: '3px solid white', borderLeft: '3px solid white' }} />
+              <div style={{ position: 'absolute', bottom: 0, right: 0, width: 22, height: 22, borderBottom: '3px solid white', borderRight: '3px solid white' }} />
             </div>
           </div>
 
