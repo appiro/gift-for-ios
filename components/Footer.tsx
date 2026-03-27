@@ -1,4 +1,7 @@
+"use client";
+
 import Link from 'next/link';
+import { useState } from 'react';
 
 const SNS = [
   {
@@ -30,33 +33,108 @@ const SNS = [
   },
 ];
 
-export default function Footer() {
+function FeedbackModal({ onClose }: { onClose: () => void }) {
+  const [message, setMessage] = useState('');
+  const [status, setStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
+
+  const handleSubmit = async () => {
+    if (!message.trim()) return;
+    setStatus('sending');
+    const res = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message }),
+    });
+    setStatus(res.ok ? 'done' : 'error');
+  };
+
   return (
-    <footer className="hidden md:block border-t border-border-light bg-white mt-8">
-      <div className="max-w-[1400px] mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-text-sub">
-        <div className="flex items-center gap-2">
-          <img src="/icons/cat.png" className="w-5 h-5 object-contain" alt="Gift for" />
-          <span className="font-bold text-text-main">Gift for</span>
-          <span>© {new Date().getFullYear()}</span>
+    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 flex flex-col gap-4"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-black text-text-main">ご意見・ご要望</h2>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center text-text-sub hover:text-text-main rounded-lg transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 16 16">
+              <line x1="2" y1="14" x2="14" y2="2"/><line x1="2" y1="2" x2="14" y2="14"/>
+            </svg>
+          </button>
         </div>
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
-            {SNS.map(({ href, label, icon }) => (
-              <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label}
-                className="text-text-sub hover:text-text-main transition-colors">
-                {icon}
-              </a>
-            ))}
+
+        {status === 'done' ? (
+          <div className="py-8 flex flex-col items-center gap-3 text-center">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" className="text-primary" viewBox="0 0 16 16">
+                <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0"/>
+              </svg>
+            </div>
+            <p className="font-bold text-text-main">ありがとうございます！</p>
+            <p className="text-sm text-text-sub">ご意見を受け付けました</p>
+            <button onClick={onClose} className="mt-2 px-6 py-2 bg-primary text-white text-sm font-bold rounded-full">閉じる</button>
           </div>
-          <nav className="flex items-center gap-5">
-            <Link href="/about" className="hover:text-text-main transition-colors">Gift forについて</Link>
-            <Link href="/guide" className="hover:text-text-main transition-colors">使い方</Link>
-            <Link href="/terms" className="hover:text-text-main transition-colors">利用規約</Link>
-            <Link href="/privacy" className="hover:text-text-main transition-colors">プライバシーポリシー</Link>
-            <a href="mailto:cat.giftfor@gmail.com" className="hover:text-text-main transition-colors">お問い合わせ</a>
-          </nav>
-        </div>
+        ) : (
+          <>
+            <p className="text-sm text-text-sub">サービスへのご意見・ご要望をお聞かせください。いただいた内容は開発の参考にさせていただきます。</p>
+            <textarea
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              placeholder="ご意見・ご要望を入力してください"
+              rows={5}
+              className="w-full border border-border-light rounded-xl px-3 py-2.5 text-sm text-text-main placeholder:text-text-sub resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
+            />
+            {status === 'error' && (
+              <p className="text-xs text-red-500">エラーが発生しました。もう一度お試しください。</p>
+            )}
+            <button
+              onClick={handleSubmit}
+              disabled={!message.trim() || status === 'sending'}
+              className="w-full py-3 bg-primary text-white text-sm font-bold rounded-xl disabled:opacity-40 hover:opacity-90 transition-opacity"
+            >
+              {status === 'sending' ? '送信中...' : '送信する'}
+            </button>
+          </>
+        )}
       </div>
-    </footer>
+    </div>
+  );
+}
+
+export default function Footer() {
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+
+  return (
+    <>
+      <footer className="hidden md:block border-t border-border-light bg-white mt-8">
+        <div className="max-w-[1400px] mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-text-sub">
+          <div className="flex items-center gap-2">
+            <img src="/icons/cat.png" className="w-5 h-5 object-contain" alt="Gift for" />
+            <span className="font-bold text-text-main">Gift for</span>
+            <span>© {new Date().getFullYear()}</span>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
+              {SNS.map(({ href, label, icon }) => (
+                <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label}
+                  className="text-text-sub hover:text-text-main transition-colors">
+                  {icon}
+                </a>
+              ))}
+            </div>
+            <nav className="flex items-center gap-5">
+              <Link href="/about" className="hover:text-text-main transition-colors">Gift forについて</Link>
+              <Link href="/guide" className="hover:text-text-main transition-colors">使い方</Link>
+              <Link href="/terms" className="hover:text-text-main transition-colors">利用規約</Link>
+              <Link href="/privacy" className="hover:text-text-main transition-colors">プライバシーポリシー</Link>
+              <a href="mailto:cat.giftfor@gmail.com" className="hover:text-text-main transition-colors">お問い合わせ</a>
+              <button onClick={() => setFeedbackOpen(true)} className="hover:text-text-main transition-colors">ご意見</button>
+            </nav>
+          </div>
+        </div>
+      </footer>
+
+      {feedbackOpen && <FeedbackModal onClose={() => setFeedbackOpen(false)} />}
+    </>
   );
 }
