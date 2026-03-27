@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { WHO_OPTIONS, SCENE_OPTIONS, CATEGORY_OPTIONS } from '@/lib/constants';
@@ -840,17 +841,18 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
         </div>
       )}
 
-      {/* Photo preview overlay: 右上=編集, 左下=削除, 右下=確認 */}
-      {previewingFile && (
+      {/* Photo preview overlay: portal で framer-motion の transform を回避 */}
+      {previewingFile && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-[200] bg-black flex flex-col"
+          className="fixed inset-0 z-[9999] bg-black flex flex-col"
           style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           <div className="flex-1 relative flex items-center justify-center min-h-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={previewingFile.previewUrl}
               alt="preview"
-              className="max-w-full max-h-full object-contain"
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
             />
             {/* 右上: 編集 */}
             <button
@@ -862,14 +864,12 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
           </div>
           {/* ボトムバー */}
           <div className="flex items-center justify-between px-8 py-5">
-            {/* 左下: 削除 */}
             <button
               onClick={handlePreviewDelete}
               className="px-5 py-3 rounded-full bg-white/10 text-white text-sm font-bold"
             >
               削除
             </button>
-            {/* 右下: 確認 */}
             <button
               onClick={handlePreviewConfirm}
               disabled={compressing}
@@ -878,7 +878,8 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
               {compressing ? '処理中...' : '確認'}
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {editingFile && (
