@@ -40,8 +40,6 @@ export default function ReviewCard({
     ...(relationship ?? []),
     ...(scene ?? []),
     ...(category ?? []),
-    ...(gender ? [gender] : []),
-    ...(ageGroup ? [ageGroup] : []),
   ].filter(Boolean);
 
   return (
@@ -54,20 +52,36 @@ export default function ReviewCard({
             className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
           />
 
-          {/* 保存数バッジ */}
-          <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-2.5 py-1 flex items-center gap-1 shadow-sm opacity-90 group-hover:opacity-100 transition-opacity">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" className="text-secondary" viewBox="0 0 16 16">
+          {/* 値段バッジ（左上） */}
+          {price && (
+            <div className="absolute top-2 left-2 bg-black/50 backdrop-blur-sm rounded-full px-2 py-0.5">
+              <span className="text-[10px] font-bold text-white">{price}</span>
+            </div>
+          )}
+
+          {/* 性別・年齢バッジ（右上） */}
+          {(gender || ageGroup) && (
+            <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-sm rounded-full px-2 py-0.5">
+              <span className="text-[10px] font-bold text-white">{[gender, ageGroup].filter(Boolean).join(' · ')}</span>
+            </div>
+          )}
+
+          {/* 保存数バッジ（右下） */}
+          <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm rounded-full px-2 py-0.5 flex items-center gap-1 shadow-sm opacity-90 group-hover:opacity-100 transition-opacity">
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="currentColor" className="text-secondary" viewBox="0 0 16 16">
               <path d="M2 2v13.5a.5.5 0 0 0 .74.439L8 13.069l5.26 2.87A.5.5 0 0 0 14 15.5V2a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2"/>
             </svg>
-            <span className="text-xs font-bold text-text-main">{saves}</span>
+            <span className="text-[10px] font-bold text-text-main">{saves}</span>
           </div>
         </div>
       </Link>
 
       <div className="px-1">
-        <p className="text-[10px] text-text-sub line-clamp-1 mb-0.5">
-          {[price, ...conditions].filter(Boolean).join('  ·  ')}
-        </p>
+        {conditions.length > 0 && (
+          <p className="text-[10px] text-text-sub line-clamp-1 mb-0.5">
+            {conditions.join('  ·  ')}
+          </p>
+        )}
         <Link href={`/post/${id}?img=${encodeURIComponent(imageUrl)}`}>
           <h3 className="text-sm font-bold text-text-main line-clamp-2 leading-snug hover:text-primary transition-colors">
             {title}

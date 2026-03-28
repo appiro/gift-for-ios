@@ -59,6 +59,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
     scene: [] as string[],
     category: [] as string[],
     episode: '',
+    customTitle: '',
   });
 
   const [suggestions, setSuggestions] = useState<ProductSuggestion[]>([]);
@@ -159,6 +160,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
           scene: review.scene ?? [],
           category: review.category ?? [],
           episode: review.episode ?? '',
+          customTitle: review.title ?? '',
         });
         setLoading(false);
       }
@@ -212,7 +214,13 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
   };
 
   const handleNext1 = () => { setStep(2); fireRakutenSearch(); };
-  const handleNext2 = () => setStep(3);
+  const handleNext2 = () => {
+    // まだカスタムタイトルが未入力なら自動生成値をセット
+    if (!formData.customTitle) {
+      setFormData(prev => ({ ...prev, customTitle: titlePreview }));
+    }
+    setStep(3);
+  };
   const handleBack = () => setStep(prev => prev - 1);
 
   const selectRakutenItem = (item: RakutenItem) => {
@@ -342,9 +350,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
         }
       }
 
-      const title = formData.brandName
-        ? `${formData.brandName}　${formData.productName}`
-        : formData.productName;
+      const title = formData.customTitle.trim() || titlePreview;
 
       const payload: Record<string, unknown> = {
         title,
@@ -612,10 +618,17 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
                 <p className="text-text-sub font-medium text-sm">詳細を教えてください✨</p>
               </div>
 
-              {/* Title preview */}
-              <div className="bg-background-soft rounded-xl px-4 py-3 border border-border-light">
-                <p className="text-xs text-text-sub mb-0.5">タイトル（自動生成）</p>
-                <p className="text-sm font-bold text-text-main">{titlePreview}</p>
+              {/* Title input */}
+              <div>
+                <label className="block text-sm font-bold text-text-main mb-2">タイトル</label>
+                <input
+                  type="text"
+                  value={formData.customTitle}
+                  onChange={e => setFormData(prev => ({ ...prev, customTitle: e.target.value }))}
+                  placeholder={titlePreview}
+                  className="w-full px-4 py-3 rounded-xl border border-border-light bg-background-soft text-text-main text-sm font-bold focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                />
+                <p className="text-[11px] text-text-sub mt-1.5">自動生成: {titlePreview}</p>
               </div>
 
               {/* Photo Upload */}
