@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import ReviewCard from '@/components/ReviewCard';
 import { motion } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
+import { apiFetch, listsUrl } from '@/lib/api';
 
 interface ListItem {
   id: string;
@@ -58,7 +59,7 @@ export default function ListsPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch('/api/lists');
+        const res = await apiFetch(listsUrl());
         if (res.ok) {
           const data = await res.json();
           setLists(data);
@@ -80,9 +81,8 @@ export default function ListsPage() {
   async function handleCreate() {
     setCreating(true);
     try {
-      const res = await fetch('/api/lists', {
+      const res = await apiFetch(listsUrl(), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: '', body: '', status: 'draft' }),
       });
       if (!res.ok) {

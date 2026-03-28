@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import ReviewCard from '@/components/ReviewCard';
 import { getSaves } from '@/lib/saves';
 import type { Review } from '@/lib/types';
+import { apiFetch, reviewUrl } from '@/lib/api';
 
 type Tab = 'all' | 'want' | 'gift';
 
@@ -19,7 +20,7 @@ export default function SavesPage() {
     const saves = getSaves();
 
     const fetchById = async (id: string): Promise<Review | null> => {
-      const res = await fetch(`/api/reviews/${id}`);
+      const res = await apiFetch(reviewUrl(id));
       if (!res.ok) return null;
       return res.json();
     };

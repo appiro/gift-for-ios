@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ReviewCard from "@/components/ReviewCard";
 import { createClient } from "@/lib/supabase/client";
+import { apiFetch, notificationsUrl, userProfileUrl, userReviewsUrl, listsUrl, listUrl, reviewUrl } from "@/lib/api";
 
 // ───────── Types ─────────
 type ReviewStatus = "published" | "private" | "draft" | "trash";
@@ -112,16 +113,14 @@ export default function MyPage() {
     const trashIds = [...pendingTrash];
     await Promise.all([
       ...changed.map((id) =>
-        fetch('/api/user/reviews', {
+        apiFetch(userReviewsUrl(), {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id, status: draftStatuses[id] }),
         })
       ),
       ...trashIds.map((id) =>
-        fetch('/api/user/reviews', {
+        apiFetch(userReviewsUrl(), {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id, status: 'trash' }),
         })
       ),
@@ -168,9 +167,9 @@ export default function MyPage() {
       );
       await Promise.all([
         ...changed.map((id) =>
-          fetch(`/api/lists/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: listDraftStatuses[id] }) })
+          apiFetch(listUrl(id), { method: 'PATCH', body: JSON.stringify({ status: listDraftStatuses[id] }) })
         ),
-        ...deleteIds.map((id) => fetch(`/api/lists/${id}`, { method: 'DELETE' })),
+        ...deleteIds.map((id) => apiFetch(listUrl(id), { method: 'DELETE' })),
       ]);
       setUserLists((prev) =>
         prev
@@ -186,7 +185,7 @@ export default function MyPage() {
   const discardListEdit = () => { setListDraftStatuses({}); setPendingListDeletes(new Set()); closeListModal(); };
 
   const permanentDelete = async (id: string) => {
-    const res = await fetch(`/api/reviews/${id}`, { method: 'DELETE' });
+    const res = await apiFetch(reviewUrl(id), { method: 'DELETE' });
     if (!res.ok) { alert('削除に失敗しました'); return; }
     setApiReviews((prev) => prev.filter((r) => r.id !== id));
     setReviewStatuses((prev) => { const next = { ...prev }; delete next[id]; return next; });
@@ -214,14 +213,14 @@ export default function MyPage() {
       setUserEmail(user.email ?? '');
 
       // 未読通知数を取得
-      fetch('/api/notifications')
+      apiFetch(notificationsUrl())
         .then((r) => r.ok ? r.json() : [])
         .then((data: { is_read: boolean }[]) => {
           setUnreadCount(Array.isArray(data) ? data.filter((n) => !n.is_read).length : 0);
         });
 
       // Load profile (name + icon)
-      fetch('/api/user/profile')
+      apiFetch(userProfileUrl())
         .then((r) => r.ok ? r.json() : null)
         .then((profile) => {
           const name = profile?.display_name ?? user.email?.split('@')[0] ?? 'ゲスト';
@@ -230,7 +229,7 @@ export default function MyPage() {
           if (profile?.icon_url) setUserIcon(profile.icon_url);
         });
 
-      fetch('/api/user/reviews')
+      apiFetch(userReviewsUrl())
         .then((r) => r.json())
         .then((data: UserReview[]) => {
           if (!Array.isArray(data)) return;
@@ -242,7 +241,7 @@ export default function MyPage() {
             Date.now() - new Date(r.updatedAt).getTime() > WEEK_MS
           );
           expired.forEach((r) =>
-            fetch(`/api/reviews/${r.id}`, { method: 'DELETE' })
+            apiFetch(reviewUrl(r.id), { method: 'DELETE' })
           );
           const alive = data.filter((r) => !expired.find((e) => e.id === r.id));
           setApiReviews(alive);
@@ -252,7 +251,7 @@ export default function MyPage() {
 
       // Load user's lists
       setLoadingLists(true);
-      fetch(`/api/lists?userId=${user.id}`)
+      apiFetch(listsUrl({ userId: user.id }))
         .then((r) => r.ok ? r.json() : [])
         .then((data) => {
           if (Array.isArray(data)) {
@@ -287,9 +286,8 @@ export default function MyPage() {
     const trimmed = nameInput.trim();
     if (trimmed) setUserName(trimmed);
     localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify({ info: profileInfo, privacy: profilePrivacy, tags: userTags, icon: userIcon }));
-    await fetch('/api/user/profile', {
+    await apiFetch(userProfileUrl(), {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ display_name: trimmed || userName }),
     });
     setShowProfileModal(false);
@@ -402,9 +400,8 @@ export default function MyPage() {
                         } catch {}
                         setPendingIcon(null);
                         setShowIconModal(false);
-                        await fetch('/api/user/profile', {
+                        await apiFetch(userProfileUrl(), {
                           method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ icon_url: pendingIcon }),
                         });
                       }}
@@ -1084,7 +1081,7 @@ export default function MyPage() {
                                 e.stopPropagation();
                                 setApiReviews(prev => prev.map(r => r.id === review.id ? { ...r, status: 'published' } : r));
                                 setReviewStatuses(prev => ({ ...prev, [review.id]: 'published' }));
-                                fetch('/api/user/reviews', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: review.id, status: 'published' }) });
+                                apiFetch(userReviewsUrl(), { method: 'PATCH', body: JSON.stringify({ id: review.id, status: 'published' }) });
                               }}
                               className="px-3 py-1.5 bg-white text-text-main text-xs font-bold rounded-full hover:opacity-90"
                             >

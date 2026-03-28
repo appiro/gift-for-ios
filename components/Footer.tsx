@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { apiFetch, feedbackUrl } from '@/lib/api';
 
 const SNS = [
   {
@@ -40,9 +41,8 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
   const handleSubmit = async () => {
     if (!message.trim()) return;
     setStatus('sending');
-    const res = await fetch('/api/feedback', {
+    const res = await apiFetch(feedbackUrl(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message }),
     });
     setStatus(res.ok ? 'done' : 'error');

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { apiFetch, notificationsUrl } from '@/lib/api';
 
 interface Notification {
   id: string;
@@ -56,12 +57,12 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/notifications')
+    apiFetch(notificationsUrl())
       .then((r) => r.ok ? r.json() : [])
       .then((data) => {
         setNotifications(Array.isArray(data) ? data : []);
         // 全既読にする
-        fetch('/api/notifications', { method: 'PATCH' });
+        apiFetch(notificationsUrl(), { method: 'PATCH' });
       })
       .finally(() => setLoading(false));
   }, []);

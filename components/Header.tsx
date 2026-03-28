@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { SCENE_GROUPS, CATEGORY_GROUPS, WHO_GROUPS } from '@/lib/constants';
 import { useSearch } from './SearchProvider';
 import { createClient } from '@/lib/supabase/client';
+import { apiFetch, notificationsUrl } from '@/lib/api';
 
 export default function Header() {
   const { addFilter, activeFilters, searchQuery, setSearchQuery, setFilterSheetOpen } = useSearch();
@@ -22,7 +23,7 @@ export default function Header() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setIsLoggedIn(!!user);
       if (user) {
-        fetch('/api/notifications')
+        apiFetch(notificationsUrl())
           .then((r) => r.ok ? r.json() : [])
           .then((data: { is_read: boolean }[]) => {
             setUnreadCount(Array.isArray(data) ? data.filter((n) => !n.is_read).length : 0);

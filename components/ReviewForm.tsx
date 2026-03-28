@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { WHO_OPTIONS, SCENE_OPTIONS, CATEGORY_OPTIONS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { compressImage } from '@/lib/compressImage';
+import { apiFetch, reviewUrl, productsUrl, rakutenSearchUrl as rakutenSearchApiUrl, reviewsUrl } from '@/lib/api';
 import PhotoEditor from '@/components/PhotoEditor';
 import type { Review } from '@/lib/types';
 
@@ -117,7 +118,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
       if (!user) { router.push('/login'); return; }
 
       if (mode === 'edit' && reviewId) {
-        const res = await fetch(`/api/reviews/${reviewId}`);
+        const res = await apiFetch(reviewUrl(reviewId));
         if (!res.ok) { router.push('/'); return; }
         const review: Review = await res.json();
         if (review.authorId !== user.id) { router.push(`/post/${reviewId}`); return; }
@@ -174,7 +175,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
     const timer = setTimeout(async () => {
       setSuggestLoading(true);
       try {
-        const res = await fetch(`/api/products?q=${encodeURIComponent(q)}`);
+        const res = await apiFetch(productsUrl(q));
         if (res.ok) setSuggestions(await res.json());
       } finally { setSuggestLoading(false); }
     }, 300);
@@ -206,7 +207,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
     setRakutenItems([]);
     setRakutenSearched(false);
     const keyword = [formData.brandName, formData.productName].filter(Boolean).join(' ').trim();
-    fetch(`/api/rakuten/search?q=${encodeURIComponent(keyword)}`)
+    apiFetch(rakutenSearchApiUrl(keyword))
       .then(res => res.ok ? res.json() : [])
       .then((items: RakutenItem[]) => setRakutenItems(items))
       .catch(() => setRakutenItems([]))
@@ -373,10 +374,9 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
       };
       if (mode === 'create') payload.productId = formData.productId || null;
 
-      const url = mode === 'create' ? '/api/reviews' : `/api/reviews/${reviewId}`;
-      const res = await fetch(url, {
+      const apiUrl = mode === 'create' ? reviewsUrl() : reviewUrl(reviewId!);
+      const res = await apiFetch(apiUrl, {
         method: mode === 'create' ? 'POST' : 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { apiFetch, adminReviewsUrl } from '@/lib/api';
 
 interface AdminReview {
   id: string;
@@ -25,7 +26,7 @@ export default function AdminReviewsPage() {
 
   const load = (p: number) => {
     setLoading(true);
-    fetch(`/api/admin/reviews?page=${p}`)
+    apiFetch(adminReviewsUrl({ page: String(p) }))
       .then(r => r.ok ? r.json() : { reviews: [], total: 0 })
       .then(({ reviews: r, total: t }) => { setReviews(r); setTotal(t); })
       .finally(() => setLoading(false));
@@ -36,9 +37,8 @@ export default function AdminReviewsPage() {
   const deleteReview = async (id: string, title: string) => {
     if (!confirm(`「${title}」を削除しますか？この操作は取り消せません。`)) return;
     setDeleting(id);
-    await fetch('/api/admin/reviews', {
+    await apiFetch(adminReviewsUrl(), {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     });
     setReviews(prev => prev.filter(r => r.id !== id));

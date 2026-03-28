@@ -4,6 +4,7 @@ import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import ReviewCard from '@/components/ReviewCard';
 import type { Review } from '@/lib/types';
+import { apiFetch, userPageUrl, reviewsUrl } from '@/lib/api';
 
 interface UserProfile {
   id: string;
@@ -23,8 +24,8 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/user/${userId}`).then((r) => r.ok ? r.json() : null),
-      fetch(`/api/reviews?userId=${userId}`).then((r) => r.ok ? r.json() : []),
+      apiFetch(userPageUrl(userId)).then((r) => r.ok ? r.json() : null),
+      apiFetch(reviewsUrl({ userId })).then((r) => r.ok ? r.json() : []),
     ]).then(([prof, revs]) => {
       setProfile(prof);
       setReviews(Array.isArray(revs) ? revs : []);

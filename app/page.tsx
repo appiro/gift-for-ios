@@ -7,6 +7,7 @@ import MobileFilterSheet from "@/components/MobileFilterSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearch } from "@/components/SearchProvider";
 import type { Review } from "@/lib/types";
+import { apiFetch, reviewsUrl } from "@/lib/api";
 
 /** "予算: 〜3,000円" の予算ラベル → DB の price フィールド値へのマッピング */
 const PRICE_MAP: Record<string, string> = {
@@ -85,7 +86,7 @@ export default function Home() {
 
   // 全件取得は初回のみ（フィルタリングはクライアント側で完結）
   useEffect(() => {
-    fetch('/api/reviews')
+    apiFetch(reviewsUrl())
       .then((res) => res.json())
       .then((data: Review[]) => setReviews(data))
       .finally(() => setLoading(false));

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { apiFetch, adminAnnouncementsUrl } from '@/lib/api';
 
 interface Announcement {
   id: string;
@@ -26,7 +27,7 @@ export default function AdminAnnouncementsPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const load = () => {
-    fetch('/api/admin/announcements').then(r => r.ok ? r.json() : []).then(setItems).finally(() => setLoading(false));
+    apiFetch(adminAnnouncementsUrl()).then(r => r.ok ? r.json() : []).then(setItems).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
@@ -34,9 +35,8 @@ export default function AdminAnnouncementsPage() {
   const post = async () => {
     if (!title.trim() || !body.trim()) return;
     setPosting(true);
-    await fetch('/api/admin/announcements', {
+    await apiFetch(adminAnnouncementsUrl(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title, body, type }),
     });
     setTitle(''); setBody(''); setType('info');
@@ -47,9 +47,8 @@ export default function AdminAnnouncementsPage() {
   const del = async (id: string) => {
     if (!confirm('このお知らせを削除しますか？')) return;
     setDeleting(id);
-    await fetch('/api/admin/announcements', {
+    await apiFetch(adminAnnouncementsUrl(), {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     });
     setItems(prev => prev.filter(a => a.id !== id));

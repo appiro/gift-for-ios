@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { apiFetch, adminStatsUrl } from '@/lib/api';
 
 const NAV = [
   { href: '/admin', label: 'ダッシュボード', icon: (
@@ -32,7 +33,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { router.push('/login'); return; }
-      const res = await fetch('/api/admin/stats');
+      const res = await apiFetch(adminStatsUrl());
       if (res.status === 403) { router.push('/'); return; }
       setChecking(false);
     });

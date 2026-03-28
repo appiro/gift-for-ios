@@ -7,6 +7,7 @@ import { WantButton, GiftButton } from '@/components/AnimatedActionButtons';
 import { createClient } from '@/lib/supabase/client';
 import type { Review } from '@/lib/types';
 import { rakutenAffiliateUrl, rakutenSearchUrl } from '@/lib/rakuten';
+import { apiFetch, reviewUrl, reviewLikeUrl, reviewCommentsUrl, reviewCommentUrl } from '@/lib/api';
 
 interface Comment {
   id: string;
@@ -60,7 +61,7 @@ export default function PostDetail({
 
   useEffect(() => {
     // Load review
-    fetch(`/api/reviews/${id}`)
+    apiFetch(reviewUrl(id))
       .then((res) => (res.ok ? res.json() : null))
       .then((data: Review | null) => {
         setReview(data);
@@ -76,12 +77,12 @@ export default function PostDetail({
       .finally(() => setLoading(false));
 
     // Load vote state
-    fetch(`/api/reviews/${id}/like`)
+    apiFetch(reviewLikeUrl(id))
       .then((res) => res.ok ? res.json() : null)
       .then((data: VoteState | null) => { if (data) setVoteState(data); });
 
     // Load comments
-    fetch(`/api/reviews/${id}/comments`)
+    apiFetch(reviewCommentsUrl(id))
       .then((res) => res.ok ? res.json() : [])
       .then((data: Comment[]) => setComments(data));
 
@@ -93,9 +94,8 @@ export default function PostDetail({
   }, [id]);
 
   const handleLike = async (type: 'want' | 'gift') => {
-    const res = await fetch(`/api/reviews/${id}/like`, {
+    const res = await apiFetch(reviewLikeUrl(id), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type }),
     });
     if (res.ok) {
@@ -111,7 +111,7 @@ export default function PostDetail({
   };
 
   const handleCommentDelete = async (commentId: string) => {
-    const res = await fetch(`/api/reviews/${id}/comments/${commentId}`, { method: 'DELETE' });
+    const res = await apiFetch(reviewCommentUrl(commentId), { method: 'DELETE' });
     if (res.ok) setComments((prev) => prev.filter((c) => c.id !== commentId));
   };
 
@@ -120,9 +120,8 @@ export default function PostDetail({
     if (!isLoggedIn) { handleRequireLogin(); return; }
     setSubmitting(true);
     setNgError('');
-    const res = await fetch(`/api/reviews/${id}/comments`, {
+    const res = await apiFetch(reviewCommentsUrl(id), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: commentText }),
     });
     if (res.ok) {
@@ -140,9 +139,8 @@ export default function PostDetail({
     if (!isLoggedIn) { handleRequireLogin(); return; }
     setSubmitting(true);
     setNgError('');
-    const res = await fetch(`/api/reviews/${id}/comments`, {
+    const res = await apiFetch(reviewCommentsUrl(id), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: replyText, parent_id: parentId }),
     });
     if (res.ok) {

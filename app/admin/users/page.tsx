@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { apiFetch, adminUsersUrl } from '@/lib/api';
 
 interface AdminUser {
   id: string;
@@ -19,17 +20,16 @@ export default function AdminUsersPage() {
   const [acting, setActing] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/admin/users').then(r => r.ok ? r.json() : []).then(setUsers).finally(() => setLoading(false));
+    apiFetch(adminUsersUrl()).then(r => r.ok ? r.json() : []).then(setUsers).finally(() => setLoading(false));
   }, []);
 
   const act = async (id: string, action: string) => {
     setActing(id);
-    await fetch('/api/admin/users', {
+    await apiFetch(adminUsersUrl(), {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, action }),
     });
-    const updated = await fetch('/api/admin/users').then(r => r.json());
+    const updated = await apiFetch(adminUsersUrl()).then(r => r.json());
     setUsers(updated);
     setActing(null);
   };

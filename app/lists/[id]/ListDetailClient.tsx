@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { apiFetch, listUrl } from '@/lib/api';
 
 interface ListItem {
   id: string;
@@ -46,7 +47,7 @@ export default function ListDetailPage({
     async function fetchData() {
       try {
         const [listRes, { data: { user } }] = await Promise.all([
-          fetch(`/api/lists/${id}`),
+          apiFetch(listUrl(id)),
           supabase.auth.getUser(),
         ]);
 

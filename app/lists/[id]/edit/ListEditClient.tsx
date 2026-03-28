@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { getSaves } from '@/lib/saves';
+import { apiFetch, listUrl, listItemsUrl, listItemUrl, reviewsUrl, userReviewsUrl, reviewUrl } from '@/lib/api';
 
 interface ListItem {
   id: string;
@@ -75,7 +76,7 @@ export default function ListEditPage({ params }: { params: Promise<{ id: string 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.replace('/lists'); return; }
 
-      const res = await fetch(`/api/lists/${id}`);
+      const res = await apiFetch(listUrl(id));
       if (!res.ok) { router.replace('/lists'); return; }
 
       const data: GiftList = await res.json();
@@ -125,7 +126,7 @@ export default function ListEditPage({ params }: { params: Promise<{ id: string 
   async function leaveAndDelete() {
     setDeleting(true);
     try {
-      await fetch(`/api/lists/${id}`, { method: 'DELETE' });
+      await apiFetch(listUrl(id), { method: 'DELETE' });
     } finally {
       setDeleting(false);
     }
@@ -145,10 +146,10 @@ export default function ListEditPage({ params }: { params: Promise<{ id: string 
     setReviewsLoading(true);
     try {
       if (tab === 'all' && allReviews.length === 0) {
-        const res = await fetch('/api/reviews');
+        const res = await apiFetch(reviewsUrl());
         if (res.ok) setAllReviews(await res.json());
       } else if (tab === 'mine' && myReviews.length === 0) {
-        const res = await fetch('/api/user/reviews');
+        const res = await apiFetch(userReviewsUrl());
         if (res.ok) {
           const data: ReviewResult[] = await res.json();
           setMyReviews(data.filter((r) => r.status === 'published'));
@@ -157,7 +158,7 @@ export default function ListEditPage({ params }: { params: Promise<{ id: string 
         const saves = getSaves();
         const ids = [...new Set([...saves.want, ...saves.gift])];
         const results = await Promise.all(
-          ids.map((rid) => fetch(`/api/reviews/${rid}`).then((r) => r.ok ? r.json() : null))
+          ids.map((rid) => apiFetch(reviewUrl(rid)).then((r) => r.ok ? r.json() : null))
         );
         setSavedReviews(results.filter(Boolean));
       }
@@ -182,9 +183,8 @@ export default function ListEditPage({ params }: { params: Promise<{ id: string 
     if (alreadyAddedIds.has(review.id)) return;
     setAddingReviewId(review.id);
     try {
-      const res = await fetch(`/api/lists/${id}/items`, {
+      const res = await apiFetch(listItemsUrl(id), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ review_id: review.id }),
       });
       if (!res.ok) return;
@@ -198,15 +198,14 @@ export default function ListEditPage({ params }: { params: Promise<{ id: string 
 
   async function updateComment(itemId: string, comment: string) {
     setItems((prev) => prev.map((item) => item.id === itemId ? { ...item, comment } : item));
-    await fetch(`/api/lists/${id}/items/${itemId}`, {
+    await apiFetch(listItemUrl(id, itemId), {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ comment }),
     });
   }
 
   async function deleteItem(itemId: string) {
-    const res = await fetch(`/api/lists/${id}/items/${itemId}`, { method: 'DELETE' });
+    const res = await apiFetch(listItemUrl(id, itemId), { method: 'DELETE' });
     if (res.ok) setItems((prev) => prev.filter((item) => item.id !== itemId));
   }
 
@@ -221,17 +220,16 @@ export default function ListEditPage({ params }: { params: Promise<{ id: string 
     [newItems[index], newItems[swapIndex]] = [newItems[swapIndex], newItems[index]];
     setItems(newItems);
     await Promise.all([
-      fetch(`/api/lists/${id}/items/${newItems[index].id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ position: posA }) }),
-      fetch(`/api/lists/${id}/items/${newItems[swapIndex].id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ position: posB }) }),
+      apiFetch(listItemUrl(id, newItems[index].id), { method: 'PATCH', body: JSON.stringify({ position: posA }) }),
+      apiFetch(listItemUrl(id, newItems[swapIndex].id), { method: 'PATCH', body: JSON.stringify({ position: posB }) }),
     ]);
   }
 
   async function handleSave(status: 'draft' | 'published') {
     setSaving(true);
     try {
-      const res = await fetch(`/api/lists/${id}`, {
+      const res = await apiFetch(listUrl(id), {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: title || '無題のまとめ', body, status }),
       });
       if (!res.ok) return;

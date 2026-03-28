@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { apiFetch, adminStatsUrl } from '@/lib/api';
 
 interface Stats {
   totalUsers: number;
@@ -26,7 +27,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
-    fetch('/api/admin/stats').then(r => r.ok ? r.json() : null).then(setStats);
+    apiFetch(adminStatsUrl()).then(r => r.ok ? r.json() : null).then(setStats);
   }, []);
 
   if (!stats) return (

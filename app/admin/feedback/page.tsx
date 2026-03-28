@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { apiFetch, feedbackUrl } from '@/lib/api';
 
 interface FeedbackItem {
   id: string;
@@ -14,7 +15,7 @@ export default function AdminFeedbackPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/feedback')
+    apiFetch(feedbackUrl())
       .then(r => r.json())
       .then(data => setItems(Array.isArray(data) ? data : []))
       .finally(() => setLoading(false));
