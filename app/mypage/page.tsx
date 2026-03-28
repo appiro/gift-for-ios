@@ -56,6 +56,11 @@ export default function MyPage() {
   const [activeTab, setActiveTab] = useState<MainTab>("published");
   const [userLists, setUserLists] = useState<UserList[]>([]);
   const [loadingLists, setLoadingLists] = useState(false);
+  const [showListEditModal, setShowListEditModal] = useState(false);
+  const [listDraftStatuses, setListDraftStatuses] = useState<Record<string, string>>({});
+  const [pendingListDeletes, setPendingListDeletes] = useState<Set<string>>(new Set());
+  const [listConfirmMode, setListConfirmMode] = useState<"discard" | "save" | null>(null);
+  const [savingLists, setSavingLists] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showIconModal, setShowIconModal] = useState(false);
   const [pendingIcon, setPendingIcon] = useState<string | null>(null);
@@ -138,6 +143,47 @@ export default function MyPage() {
   };
   const discardEdit = () => { setDraftStatuses({}); setPendingTrash(new Set()); closeModal(); };
 
+
+  // ── まとめ投稿 編集モーダル ──
+  const hasListChanges =
+    Object.keys(listDraftStatuses).some((id) => listDraftStatuses[id] !== userLists.find(l => l.id === id)?.status) ||
+    pendingListDeletes.size > 0;
+
+  const openListEditModal = () => {
+    setListDraftStatuses(Object.fromEntries(userLists.map(l => [l.id, l.status])));
+    setPendingListDeletes(new Set());
+    setListConfirmMode(null);
+    setShowListEditModal(true);
+  };
+  const closeListModal = () => { setShowListEditModal(false); setListConfirmMode(null); };
+  const onListSaveClick = () => { if (hasListChanges) setListConfirmMode("save"); };
+  const onListCancelClick = () => { if (hasListChanges) setListConfirmMode("discard"); else closeListModal(); };
+
+  const saveListEdit = async () => {
+    setSavingLists(true);
+    try {
+      const deleteIds = [...pendingListDeletes];
+      const changed = Object.keys(listDraftStatuses).filter(
+        (id) => !pendingListDeletes.has(id) && listDraftStatuses[id] !== userLists.find(l => l.id === id)?.status
+      );
+      await Promise.all([
+        ...changed.map((id) =>
+          fetch(`/api/lists/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: listDraftStatuses[id] }) })
+        ),
+        ...deleteIds.map((id) => fetch(`/api/lists/${id}`, { method: 'DELETE' })),
+      ]);
+      setUserLists((prev) =>
+        prev
+          .filter(l => !pendingListDeletes.has(l.id))
+          .map(l => ({ ...l, status: listDraftStatuses[l.id] ?? l.status }))
+      );
+      setPendingListDeletes(new Set());
+    } finally {
+      setSavingLists(false);
+    }
+    closeListModal();
+  };
+  const discardListEdit = () => { setListDraftStatuses({}); setPendingListDeletes(new Set()); closeListModal(); };
 
   const permanentDelete = async (id: string) => {
     const res = await fetch(`/api/reviews/${id}`, { method: 'DELETE' });
@@ -662,16 +708,27 @@ export default function MyPage() {
             })}
           </div>
 
-          {/* 右詰め：公開情報を編集ボタン */}
+          {/* 右詰め：編集ボタン */}
           <div className="pb-3 pl-2 flex-shrink-0">
-            <button
-              onClick={openEditModal}
-              className="flex items-center gap-1 bg-white border border-border-light text-text-main px-2.5 sm:px-4 py-1.5 rounded-full text-xs font-bold shadow-sm hover:border-primary hover:text-primary transition-all"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              <span className="hidden sm:inline">公開情報を編集</span>
-              <span className="sm:hidden">編集</span>
-            </button>
+            {activeTab === "lists" ? (
+              <button
+                onClick={openListEditModal}
+                className="flex items-center gap-1 bg-white border border-border-light text-text-main px-2.5 sm:px-4 py-1.5 rounded-full text-xs font-bold shadow-sm hover:border-primary hover:text-primary transition-all"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                <span className="hidden sm:inline">まとめを編集</span>
+                <span className="sm:hidden">編集</span>
+              </button>
+            ) : (
+              <button
+                onClick={openEditModal}
+                className="flex items-center gap-1 bg-white border border-border-light text-text-main px-2.5 sm:px-4 py-1.5 rounded-full text-xs font-bold shadow-sm hover:border-primary hover:text-primary transition-all"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                <span className="hidden sm:inline">公開情報を編集</span>
+                <span className="sm:hidden">編集</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -819,6 +876,117 @@ export default function MyPage() {
                               className="flex-1 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-hover transition-colors shadow-sm"
                             >
                               確定
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ─── まとめ投稿 編集モーダル ─── */}
+      <AnimatePresence>
+        {showListEditModal && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onListCancelClick} className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 30 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-lg bg-white rounded-3xl z-[70] shadow-2xl border border-border-light max-h-[85vh] flex flex-col"
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center px-6 pt-6 pb-4 border-b border-border-light flex-shrink-0">
+                <div>
+                  <h3 className="text-lg font-bold text-text-main">まとめ投稿を編集</h3>
+                  <p className="text-xs text-text-sub mt-0.5">公開ステータスの変更・削除ができます</p>
+                </div>
+                <button onClick={onListCancelClick} className="w-8 h-8 flex items-center justify-center bg-background-soft rounded-full text-text-sub hover:text-text-main transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="overflow-y-auto flex-1 px-4 py-4">
+                {userLists.filter(l => !pendingListDeletes.has(l.id)).length === 0 && (
+                  <p className="text-center text-sm text-text-sub py-10">まとめ投稿がありません</p>
+                )}
+                <AnimatePresence initial={false}>
+                {userLists.filter(l => !pendingListDeletes.has(l.id)).map((list) => (
+                  <motion.div key={list.id} layout exit={{ opacity: 0, height: 0, marginBottom: 0 }} transition={{ duration: 0.25, ease: 'easeInOut' }} style={{ overflow: 'hidden', marginBottom: 8 }}
+                    className="flex items-center gap-3 p-4 bg-background-soft/60 border border-border-light/60 rounded-2xl hover:border-primary/30 transition-colors">
+                    {/* サムネイル */}
+                    <div className="flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden bg-background-soft border border-border-light">
+                      {list.coverUrl
+                        ? <img src={list.coverUrl} alt={list.title} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center text-text-sub/30"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M1.5 1a.5.5 0 0 0-.5.5v3a.5.5 0 0 1-1 0v-3A1.5 1.5 0 0 1 1.5 0h3a.5.5 0 0 1 0 1zM11 .5a.5.5 0 0 1 .5-.5h3A1.5 1.5 0 0 1 16 1.5v3a.5.5 0 0 1-1 0v-3a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 1-.5-.5M.5 11a.5.5 0 0 1 .5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 1 0 1h-3A1.5 1.5 0 0 1 0 14.5v-3a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v3a1.5 1.5 0 0 1-1.5 1.5h-3a.5.5 0 0 1 0-1h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 1 .5-.5"/><path d="M3 5.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/></svg></div>
+                      }
+                    </div>
+                    {/* テキスト */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-text-main truncate">{list.title || '無題のまとめ'}</p>
+                      <p className="text-[10px] text-text-sub mt-0.5">{list.reviewCount}件</p>
+                    </div>
+                    {/* 削除 + トグル */}
+                    <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
+                      <button
+                        onClick={() => setPendingListDeletes(prev => new Set([...prev, list.id]))}
+                        className="text-[10px] text-text-sub/50 hover:text-red-500 transition-colors flex items-center gap-1"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/></svg>
+                        削除
+                      </button>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[10px] text-text-sub/70 font-bold">
+                          {listDraftStatuses[list.id] === "published" ? "公開中" : "下書き"}
+                        </span>
+                        <SlideToggle
+                          isOn={listDraftStatuses[list.id] === "published"}
+                          onToggle={() => setListDraftStatuses(prev => ({ ...prev, [list.id]: prev[list.id] === "published" ? "draft" : "published" }))}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+                </AnimatePresence>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-border-light flex gap-3 flex-shrink-0">
+                <button onClick={onListCancelClick} className="flex-1 py-2.5 border border-border-light rounded-xl text-sm font-bold text-text-sub hover:bg-background-soft transition-colors">キャンセル</button>
+                <button onClick={onListSaveClick} disabled={!hasListChanges}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm ${hasListChanges ? "bg-primary text-white hover:bg-primary-hover" : "bg-background-soft text-text-sub cursor-not-allowed"}`}>
+                  保存する
+                </button>
+              </div>
+
+              {/* 確認ダイアログ */}
+              <AnimatePresence>
+                {listConfirmMode !== null && (
+                  <>
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/25 rounded-3xl z-10" onClick={() => setListConfirmMode(null)} />
+                    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 16 }} transition={{ type: "spring", bounce: 0.3 }}
+                      className="absolute bottom-6 left-4 right-4 bg-white rounded-2xl shadow-2xl border border-border-light p-5 z-20">
+                      {listConfirmMode === "discard" ? (
+                        <>
+                          <p className="text-sm font-bold text-text-main mb-1">変更を破棄しますか？</p>
+                          <p className="text-xs text-text-sub mb-4">未保存の変更は元に戻ります。</p>
+                          <div className="flex gap-3">
+                            <button onClick={() => setListConfirmMode(null)} className="flex-1 py-2.5 border border-border-light rounded-xl text-sm font-bold text-text-sub hover:bg-background-soft transition-colors">戻る</button>
+                            <button onClick={discardListEdit} className="flex-1 py-2.5 bg-[#d00000]/10 border border-[#d00000]/30 text-[#d00000] rounded-xl text-sm font-bold hover:bg-[#d00000]/20 transition-colors">変更を破棄</button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm font-bold text-text-main mb-1">変更を保存しますか？</p>
+                          <p className="text-xs text-text-sub mb-4">ステータスの変更が反映されます。{pendingListDeletes.size > 0 && `${pendingListDeletes.size}件のまとめが削除されます。`}</p>
+                          <div className="flex gap-3">
+                            <button onClick={() => setListConfirmMode(null)} className="flex-1 py-2.5 border border-border-light rounded-xl text-sm font-bold text-text-sub hover:bg-background-soft transition-colors">戻る</button>
+                            <button onClick={saveListEdit} disabled={savingLists} className="flex-1 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-hover transition-colors shadow-sm disabled:opacity-50">
+                              {savingLists ? '保存中...' : '確定'}
                             </button>
                           </div>
                         </>
