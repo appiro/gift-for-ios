@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, useRef, use } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { getSaves } from '@/lib/saves';
 
@@ -51,6 +52,10 @@ export default function ListEditPage({ params }: { params: Promise<{ id: string 
   const [items, setItems] = useState<ListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  // popstate で「戻る」を検知するため、ダイアログ表示中はダミーエントリを積む
+  const leaveDialogRef = useRef(false);
 
   // Search modal
   const [showModal, setShowModal] = useState(false);
@@ -84,6 +89,50 @@ export default function ListEditPage({ params }: { params: Promise<{ id: string 
     }
     init();
   }, [id]);
+
+  // ブラウザのタブを閉じる・リロードするときに警告
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, []);
+
+  // ブラウザバック（戻るボタン）をダイアログで受け取る
+  useEffect(() => {
+    if (loading) return;
+    // ダミーエントリを積んで「戻る」を検知できるようにする
+    window.history.pushState({ leaveGuard: true }, '');
+    const onPopState = () => {
+      if (leaveDialogRef.current) return;
+      leaveDialogRef.current = true;
+      setShowLeaveDialog(true);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [loading]);
+
+  function requestLeave() {
+    leaveDialogRef.current = true;
+    setShowLeaveDialog(true);
+  }
+
+  async function leaveAsDraft() {
+    setShowLeaveDialog(false);
+    leaveDialogRef.current = false;
+    router.push('/lists');
+  }
+
+  async function leaveAndDelete() {
+    setDeleting(true);
+    try {
+      await fetch(`/api/lists/${id}`, { method: 'DELETE' });
+    } finally {
+      setDeleting(false);
+    }
+    setShowLeaveDialog(false);
+    leaveDialogRef.current = false;
+    router.push('/lists');
+  }
 
   async function openModal() {
     setShowModal(true);
@@ -214,7 +263,7 @@ export default function ListEditPage({ params }: { params: Promise<{ id: string 
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-lg font-bold text-text-main">まとめ投稿を編集</h1>
         <div className="flex items-center gap-2">
-          <button onClick={() => router.push(`/lists/${id}`)} className="px-3 py-1.5 text-sm text-text-sub hover:text-text-main border border-border-light rounded-full transition-colors">
+          <button onClick={requestLeave} className="px-3 py-1.5 text-sm text-text-sub hover:text-text-main border border-border-light rounded-full transition-colors">
             キャンセル
           </button>
           <button onClick={() => handleSave('draft')} disabled={saving}
@@ -375,6 +424,65 @@ export default function ListEditPage({ params }: { params: Promise<{ id: string 
           </div>
         </div>
       </div>
+
+      {/* Leave Dialog */}
+      <AnimatePresence>
+        {showLeaveDialog && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+              onClick={() => { setShowLeaveDialog(false); leaveDialogRef.current = false; window.history.pushState({ leaveGuard: true }, ''); }}
+            />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl"
+              style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            >
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-border-light" />
+              </div>
+              <div className="px-5 pt-3 pb-6 space-y-3">
+                <div className="pb-2">
+                  <p className="text-base font-bold text-text-main">編集を終了しますか？</p>
+                  <p className="text-xs text-text-sub mt-1">下書きとして保存すると、あとで続きを編集できます。</p>
+                </div>
+                <button
+                  onClick={leaveAsDraft}
+                  className="w-full py-3.5 bg-background-soft border border-border-light rounded-2xl text-sm font-bold text-text-main hover:bg-white transition-colors text-left px-4 flex items-center gap-3"
+                >
+                  <span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" className="text-primary" viewBox="0 0 16 16">
+                      <path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H9.5a1 1 0 0 0-1 1v7.293l2.646-2.647a.5.5 0 0 1 .708.708l-3.5 3.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L7.5 9.293V2a2 2 0 0 1 2-2H14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h2.5a.5.5 0 0 1 0 1z"/>
+                    </svg>
+                  </span>
+                  <span>
+                    <span className="block">下書きとして保存</span>
+                    <span className="text-[11px] text-text-sub font-normal">あとで編集を再開できます</span>
+                  </span>
+                </button>
+                <button
+                  onClick={leaveAndDelete}
+                  disabled={deleting}
+                  className="w-full py-3.5 bg-red-50 border border-red-100 rounded-2xl text-sm font-bold text-red-500 hover:bg-red-100 transition-colors text-left px-4 flex items-center gap-3 disabled:opacity-50"
+                >
+                  <span className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" className="text-red-400" viewBox="0 0 16 16">
+                      <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+                      <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
+                    </svg>
+                  </span>
+                  <span>
+                    <span className="block">{deleting ? '削除中...' : '削除して終了'}</span>
+                    <span className="text-[11px] text-red-400 font-normal">この投稿を完全に削除します</span>
+                  </span>
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Search Modal */}
       {showModal && (
