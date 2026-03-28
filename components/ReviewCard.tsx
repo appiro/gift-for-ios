@@ -54,15 +54,15 @@ export default function ReviewCard({
 
           {/* 値段バッジ（左上） */}
           {price && (
-            <div className="absolute top-2 left-2 bg-black/50 backdrop-blur-sm rounded-full px-2 py-0.5">
-              <span className="text-[10px] font-bold text-white">{price}</span>
+            <div className="absolute top-2 left-2 bg-black/30 backdrop-blur-sm rounded-full px-1.5 py-0.5 flex items-center">
+              <span className="text-[9px] font-bold text-white leading-none">{price}</span>
             </div>
           )}
 
           {/* 性別・年齢バッジ（右上） */}
           {(gender || ageGroup) && (
-            <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-sm rounded-full px-2 py-0.5">
-              <span className="text-[10px] font-bold text-white">{[gender, ageGroup].filter(Boolean).join(' · ')}</span>
+            <div className="absolute top-2 right-2 bg-black/30 backdrop-blur-sm rounded-full px-1.5 py-0.5 flex items-center">
+              <span className="text-[9px] font-bold text-white leading-none">{[gender, ageGroup].filter(Boolean).join(' · ')}</span>
             </div>
           )}
 
