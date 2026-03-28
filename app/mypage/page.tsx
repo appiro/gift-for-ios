@@ -700,13 +700,13 @@ export default function MyPage() {
               </div>
 
               {/* Body */}
-              <div className="overflow-y-auto flex-1 px-4 py-4 space-y-2">
+              <div className="overflow-y-auto flex-1 px-4 py-4">
                 {reviews.filter((r) => r.status !== "draft" && r.status !== "trash" && !pendingTrash.has(r.id)).length === 0 && (
                   <p className="text-center text-sm text-text-sub py-10">公開・非公開の口コミがありません</p>
                 )}
-                <AnimatePresence>
+                <AnimatePresence initial={false}>
                 {reviews.filter((r) => r.status !== "draft" && r.status !== "trash" && !pendingTrash.has(r.id)).map((review) => (
-                  <motion.div key={review.id} layout exit={{ opacity: 0, height: 0, marginBottom: 0, overflow: 'hidden' }} transition={{ duration: 0.22 }} className="flex items-start gap-3 p-4 bg-background-soft/60 border border-border-light/60 rounded-2xl hover:border-primary/30 transition-colors">
+                  <motion.div key={review.id} layout exit={{ opacity: 0, height: 0, marginBottom: 0 }} transition={{ duration: 0.25, ease: 'easeInOut' }} style={{ overflow: 'hidden', marginBottom: 8 }} className="flex items-start gap-3 p-4 bg-background-soft/60 border border-border-light/60 rounded-2xl hover:border-primary/30 transition-colors">
                     {/* テキスト情報 */}
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-text-sub mb-0.5 truncate">{review.title}</p>

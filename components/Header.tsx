@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { WHO_OPTIONS, SCENE_OPTIONS, CATEGORY_OPTIONS } from '@/lib/constants';
+import { SCENE_GROUPS, CATEGORY_GROUPS, WHO_GROUPS } from '@/lib/constants';
 import { useSearch } from './SearchProvider';
 import { createClient } from '@/lib/supabase/client';
 
@@ -313,12 +313,19 @@ export default function Header() {
               </svg>
             </button>
             <div className="absolute top-full left-0 pt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50">
-              <div className="w-[480px] bg-white border border-border-light shadow-2xl rounded-2xl p-4 flex flex-wrap gap-2">
-                {SCENE_OPTIONS.map((scene) => (
-                  <button key={scene} onClick={() => addFilter(`シーン: ${scene}`)}
-                    className="px-3 py-1.5 text-xs text-text-sub hover:text-primary hover:bg-primary/8 rounded-full border border-border-light hover:border-primary/30 transition-all">
-                    {scene}
-                  </button>
+              <div className="w-[520px] bg-white border border-border-light shadow-2xl rounded-2xl p-4 space-y-3 max-h-[70vh] overflow-y-auto">
+                {SCENE_GROUPS.map((group) => (
+                  <div key={group.label}>
+                    <p className="text-[10px] font-bold text-text-sub uppercase tracking-wide mb-1.5">{group.label}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {group.items.map((item) => (
+                        <button key={item} onClick={() => addFilter(`シーン: ${item}`)}
+                          className="px-3 py-1.5 text-xs text-text-sub hover:text-primary hover:bg-primary/8 rounded-full border border-border-light hover:border-primary/30 transition-all">
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -336,12 +343,19 @@ export default function Header() {
               </svg>
             </button>
             <div className="absolute top-full left-0 pt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50">
-              <div className="w-[480px] bg-white border border-border-light shadow-2xl rounded-2xl p-4 flex flex-wrap gap-2">
-                {WHO_OPTIONS.map((person) => (
-                  <button key={person} onClick={() => addFilter(`関係: ${person}`)}
-                    className="px-3 py-1.5 text-xs text-text-sub hover:text-primary hover:bg-primary/8 rounded-full border border-border-light hover:border-primary/30 transition-all">
-                    {person}
-                  </button>
+              <div className="w-[480px] bg-white border border-border-light shadow-2xl rounded-2xl p-4 space-y-3 max-h-[70vh] overflow-y-auto">
+                {WHO_GROUPS.map((group) => (
+                  <div key={group.label}>
+                    <p className="text-[10px] font-bold text-text-sub uppercase tracking-wide mb-1.5">{group.label}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {group.items.map((item) => (
+                        <button key={item} onClick={() => addFilter(`関係: ${item}`)}
+                          className="px-3 py-1.5 text-xs text-text-sub hover:text-primary hover:bg-primary/8 rounded-full border border-border-light hover:border-primary/30 transition-all">
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -359,12 +373,19 @@ export default function Header() {
               </svg>
             </button>
             <div className="absolute top-full left-0 pt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50">
-              <div className="w-[480px] bg-white border border-border-light shadow-2xl rounded-2xl p-4 flex flex-wrap gap-2">
-                {CATEGORY_OPTIONS.map((cat) => (
-                  <button key={cat} onClick={() => addFilter(`カテゴリ: ${cat}`)}
-                    className="px-3 py-1.5 text-xs text-text-sub hover:text-primary hover:bg-primary/8 rounded-full border border-border-light hover:border-primary/30 transition-all">
-                    {cat}
-                  </button>
+              <div className="w-[540px] bg-white border border-border-light shadow-2xl rounded-2xl p-4 space-y-3 max-h-[70vh] overflow-y-auto">
+                {CATEGORY_GROUPS.map((group) => (
+                  <div key={group.label}>
+                    <p className="text-[10px] font-bold text-text-sub uppercase tracking-wide mb-1.5">{group.label}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {group.items.map((item) => (
+                        <button key={item} onClick={() => addFilter(`カテゴリ: ${item}`)}
+                          className="px-3 py-1.5 text-xs text-text-sub hover:text-primary hover:bg-primary/8 rounded-full border border-border-light hover:border-primary/30 transition-all">
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
