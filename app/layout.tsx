@@ -6,7 +6,8 @@ import Footer from "@/components/Footer";
 import MobileNav from "@/components/MobileNav";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import PushNotificationInit from "@/components/PushNotificationInit";
-import Onboarding from "@/components/Onboarding";
+import dynamic from "next/dynamic";
+const Onboarding = dynamic(() => import("@/components/Onboarding"), { ssr: false });
 import { SearchProvider } from "@/components/SearchProvider";
 
 const geistSans = Geist({
