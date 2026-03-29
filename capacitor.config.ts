@@ -3,7 +3,11 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.giftfor.app',
   appName: 'Gift for',
-  webDir: 'out'
+  webDir: 'out',
+  server: {
+    url: 'https://giftfor.info',
+    cleartext: false,
+  },
 };
 
 export default config;
