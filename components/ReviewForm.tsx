@@ -81,6 +81,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
   });
 
   const [showInterruptModal, setShowInterruptModal] = useState(false);
+  const [invalidFields, setInvalidFields] = useState<Set<string>>(new Set());
   const DRAFT_KEY = 'review-draft';
 
   const saveDraft = () => {
@@ -328,9 +329,13 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
   };
 
   const handleSubmit = async () => {
-    if (!formData.productName || !formData.episode) return;
-    if (!priceUnknown && !formData.priceCategory) return;
-    if (!imagePreviews[0]) { setError('1枚目の写真は必須です'); return; }
+    const missing = new Set<string>();
+    if (!formData.productName) missing.add('productName');
+    if (!formData.episode) missing.add('episode');
+    if (!priceUnknown && !formData.priceCategory) missing.add('priceCategory');
+    if (!imagePreviews[0]) missing.add('photo');
+    if (missing.size > 0) { setInvalidFields(missing); return; }
+    setInvalidFields(new Set());
 
     setSubmitting(true);
     setError(null);
@@ -557,7 +562,8 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-border-light flex justify-end">
+              <div className="pt-6 border-t border-border-light flex justify-between items-center">
+                <button onClick={() => setShowInterruptModal(true)} className="px-6 py-3 rounded-full font-bold border border-border-light text-text-sub hover:border-primary/40 hover:text-primary transition-all text-sm">中断する</button>
                 <NextButton onClick={handleNext1} disabled={!isStep1Valid} />
               </div>
             </div>
@@ -604,7 +610,8 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-border-light flex justify-end">
+              <div className="pt-6 border-t border-border-light flex justify-between items-center">
+                <button onClick={() => setShowInterruptModal(true)} className="px-6 py-3 rounded-full font-bold border border-border-light text-text-sub hover:border-primary/40 hover:text-primary transition-all text-sm">中断する</button>
                 <NextButton onClick={handleNext2} disabled={!isStep2Valid} />
               </div>
             </div>
@@ -641,7 +648,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
                   {[0, 1].map((index) => (
                     <div key={index}>
                       <div onClick={() => imagePreviews[index] ? setViewingIndex(index) : fileInputRefs[index].current?.click()}
-                        className="aspect-square bg-background-soft border-2 border-dashed border-border-light rounded-2xl flex flex-col items-center justify-center text-text-sub hover:bg-white hover:border-primary cursor-pointer transition-colors group overflow-hidden">
+                        className={`aspect-square bg-background-soft border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-text-sub hover:bg-white hover:border-primary cursor-pointer transition-colors group overflow-hidden ${index === 0 && invalidFields.has('photo') ? 'border-primary/50 bg-primary/5' : 'border-border-light'}`}>
                         {compressing && !imagePreviews[index] ? (
                           <Spinner size={8} color="text-primary" />
                         ) : imagePreviews[index] ? (
@@ -744,7 +751,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
                   <div className="relative max-w-[200px]">
                     <input type="number" step="100" placeholder="5000" value={formData.priceCategory}
                       onChange={(e) => updateData('priceCategory', e.target.value)}
-                      className="w-full bg-background-soft border border-border-light rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-primary focus:bg-white transition-colors" />
+                      className={`w-full bg-background-soft border rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-primary focus:bg-white transition-colors ${invalidFields.has('priceCategory') ? 'border-primary/50 bg-primary/5' : 'border-border-light'}`} />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-main font-bold text-sm">円</span>
                   </div>
                 )}
@@ -818,17 +825,15 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
                 </label>
                 <textarea rows={4} value={formData.episode} onChange={(e) => updateData('episode', e.target.value)}
                   placeholder="先輩からは「センスいいね！」と言われました..."
-                  className="w-full bg-background-soft border border-border-light rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary focus:bg-white transition-colors resize-none" />
+                  className={`w-full bg-background-soft border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary focus:bg-white transition-colors resize-none ${invalidFields.has('episode') ? 'border-primary/50 bg-primary/5' : 'border-border-light'}`} />
               </div>
 
               {error && <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">{error}</div>}
 
               <div className="pt-4 flex justify-between items-center border-t border-border-light">
-                <span className="text-xs text-text-sub">必須項目をすべて埋めてください</span>
-                <button onClick={handleSubmit} disabled={!isStep3Valid || submitting || compressing}
-                  className={`px-10 py-3.5 rounded-full font-bold shadow-lg transition-all flex items-center gap-2 ${
-                    isStep3Valid && !submitting ? 'bg-accent-strong text-white hover:opacity-90 hover:-translate-y-1' : 'bg-border-light text-text-sub cursor-not-allowed opacity-70'
-                  }`}>
+                <button onClick={() => setShowInterruptModal(true)} className="px-6 py-3 rounded-full font-bold border border-border-light text-text-sub hover:border-primary/40 hover:text-primary transition-all text-sm">中断する</button>
+                <button onClick={handleSubmit} disabled={submitting || compressing}
+                  className="px-10 py-3.5 rounded-full font-bold shadow-lg transition-all flex items-center gap-2 bg-accent-strong text-white hover:opacity-90 hover:-translate-y-1 disabled:opacity-60 disabled:cursor-not-allowed disabled:translate-y-0">
                   {submitting ? (
                     <><Spinner size={4} /> {mode === 'create' ? '投稿中...' : '更新中...'}</>
                   ) : (
@@ -836,7 +841,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                         <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z" />
                       </svg>
-                      {mode === 'create' ? 'この内容で投稿する' : 'この内容で更新する'}
+                      {mode === 'create' ? '投稿する' : '更新する'}
                     </>
                   )}
                 </button>
@@ -846,18 +851,6 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
 
         </div>
       </div>
-
-      {/* 中断ボタン（右下固定） */}
-      <button
-        onClick={() => setShowInterruptModal(true)}
-        className="fixed bottom-24 md:bottom-8 right-4 md:right-8 z-40 flex items-center gap-1.5 px-4 py-2 bg-white border border-border-light rounded-full text-xs font-bold text-text-sub shadow-md hover:border-red-300 hover:text-red-400 transition-all"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
-          <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/>
-        </svg>
-        中断する
-      </button>
 
       {/* 中断モーダル */}
       {showInterruptModal && (
