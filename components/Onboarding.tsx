@@ -24,7 +24,7 @@ export default function Onboarding() {
     if (localStorage.getItem(STORAGE_KEY)) return;
     setVisible(true);
 
-    import('@capacitor/core').then(({ Capacitor }) => {
+    import(/* webpackIgnore: true */ '@capacitor/core').then(({ Capacitor }) => {
       setIsIos(Capacitor.getPlatform() === 'ios');
     }).catch(() => {});
   }, []);
@@ -235,7 +235,7 @@ function NotificationsStep({ onNext }: { onNext: () => void }) {
   const requestPermission = async () => {
     setRequesting(true);
     try {
-      const { PushNotifications } = await import('@capacitor/push-notifications');
+      const { PushNotifications } = await import(/* webpackIgnore: true */ '@capacitor/push-notifications');
       const { receive } = await PushNotifications.requestPermissions();
       if (receive === 'granted') await PushNotifications.register();
     } catch (e) {

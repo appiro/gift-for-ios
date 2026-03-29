@@ -5,9 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MobileNav from "@/components/MobileNav";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
-import PushNotificationInit from "@/components/PushNotificationInit";
-import dynamic from "next/dynamic";
-const Onboarding = dynamic(() => import("@/components/Onboarding"), { ssr: false });
+import ClientOnlyWidgets from "@/components/ClientOnlyWidgets";
 import { SearchProvider } from "@/components/SearchProvider";
 
 const geistSans = Geist({
@@ -85,8 +83,7 @@ export default function RootLayout({
           <Footer />
           <MobileNav />
           <ServiceWorkerRegister />
-          <PushNotificationInit />
-          <Onboarding />
+          <ClientOnlyWidgets />
         </SearchProvider>
       </body>
     </html>

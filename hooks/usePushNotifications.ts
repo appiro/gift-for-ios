@@ -10,10 +10,10 @@ export function usePushNotifications() {
 
     async function init() {
       // Capacitor が利用可能かチェック
-      const { Capacitor } = await import('@capacitor/core');
+      const { Capacitor } = await import(/* webpackIgnore: true */ '@capacitor/core');
       if (!Capacitor.isNativePlatform()) return;
 
-      const { PushNotifications } = await import('@capacitor/push-notifications');
+      const { PushNotifications } = await import(/* webpackIgnore: true */ '@capacitor/push-notifications');
 
       // 権限をリクエスト
       const { receive } = await PushNotifications.requestPermissions();
