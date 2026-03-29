@@ -24,7 +24,7 @@ export function usePushNotifications() {
       await PushNotifications.register();
 
       // デバイストークンを Supabase に保存
-      PushNotifications.addListener('registration', async (token) => {
+      PushNotifications.addListener('registration', async (token: any) => {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
@@ -36,12 +36,12 @@ export function usePushNotifications() {
       });
 
       // フォアグラウンド通知の受信
-      PushNotifications.addListener('pushNotificationReceived', (notification) => {
+      PushNotifications.addListener('pushNotificationReceived', (notification: any) => {
         console.log('Push received:', notification);
       });
 
       // 通知タップ時のナビゲーション
-      PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+      PushNotifications.addListener('pushNotificationActionPerformed', (action: any) => {
         const url = action.notification.data?.url;
         if (url && typeof window !== 'undefined') {
           window.location.href = url;
