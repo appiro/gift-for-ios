@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gift-for-v2';
+const CACHE_NAME = 'gift-for-v3';
 
 // アプリシェル：インストール時にキャッシュするファイル
 const APP_SHELL = [
@@ -34,13 +34,13 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // API・外部リクエストはネットワーク優先（キャッシュしない）
-  if (url.pathname.startsWith('/api/') || url.origin !== location.origin) {
+  // APIリクエストはキャッシュしない
+  if (url.pathname.startsWith('/api/')) {
     event.respondWith(fetch(request).catch(() => new Response('offline', { status: 503 })));
     return;
   }
 
-  // 画像・静的ファイル → キャッシュ優先（Cache First）
+  // 画像・静的ファイル → キャッシュ優先（Cache First）外部オリジン（Supabase等）も対象
   if (
     request.destination === 'image' ||
     request.destination === 'font' ||
@@ -59,6 +59,12 @@ self.addEventListener('fetch', (event) => {
           })
       )
     );
+    return;
+  }
+
+  // 外部オリジンの非画像リクエスト（fetch API等）はキャッシュしない
+  if (url.origin !== location.origin) {
+    event.respondWith(fetch(request).catch(() => new Response('offline', { status: 503 })));
     return;
   }
 

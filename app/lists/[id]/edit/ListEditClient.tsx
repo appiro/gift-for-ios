@@ -276,10 +276,10 @@ export default function ListEditPage({ params }: { params: Promise<{ id: string 
       </div>
 
       {/* 2-column layout */}
-      <div className="bg-white border border-border-light rounded-2xl p-6 flex gap-8 items-start">
+      <div className="bg-white border border-border-light rounded-2xl p-4 md:p-6 flex flex-col md:flex-row gap-6 md:gap-8 items-start">
 
-        {/* LEFT: Title + Body (sticky) */}
-        <div className="w-80 flex-shrink-0 sticky top-24 space-y-5">
+        {/* LEFT: Title + Body (sticky on desktop) */}
+        <div className="w-full md:w-72 flex-shrink-0 md:sticky md:top-24 space-y-5">
           <div className="space-y-5">
             {/* Title */}
             <div className="space-y-1.5">
@@ -331,7 +331,8 @@ export default function ListEditPage({ params }: { params: Promise<{ id: string 
         </div>
 
         {/* Divider */}
-        <div className="w-px self-stretch bg-border-light flex-shrink-0" />
+        <div className="hidden md:block w-px self-stretch bg-border-light flex-shrink-0" />
+        <div className="md:hidden h-px w-full bg-border-light flex-shrink-0" />
 
         {/* RIGHT: Items list */}
         <div className="flex-1 min-w-0 space-y-4">
