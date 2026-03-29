@@ -27,7 +27,7 @@ workflows:
       - name: Fetch signing files
         script: |
           echo "$CERTIFICATE_PRIVATE_KEY" | base64 --decode > /tmp/certificate_key.pem
-          app-store-connect fetch-signing-files info.giftfor \
+          app-store-connect fetch-signing-files com.giftfor.app \
             --platform IOS \
             --type IOS_APP_STORE \
             --certificate-key @file:/tmp/certificate_key.pem \
