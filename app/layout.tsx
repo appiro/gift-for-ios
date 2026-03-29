@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import MobileNav from "@/components/MobileNav";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import PushNotificationInit from "@/components/PushNotificationInit";
+import Onboarding from "@/components/Onboarding";
 import { SearchProvider } from "@/components/SearchProvider";
 
 const geistSans = Geist({
@@ -84,6 +85,7 @@ export default function RootLayout({
           <MobileNav />
           <ServiceWorkerRegister />
           <PushNotificationInit />
+          <Onboarding />
         </SearchProvider>
       </body>
     </html>
