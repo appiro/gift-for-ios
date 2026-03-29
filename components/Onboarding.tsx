@@ -44,7 +44,7 @@ export default function Onboarding() {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-background flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-[100] bg-white flex flex-col overflow-hidden">
       <AnimatePresence mode="wait">
         {step === 'welcome' && (
           <WelcomeStep key="welcome" onNext={() => goNext('welcome')} />

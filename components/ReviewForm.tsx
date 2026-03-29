@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { WHO_OPTIONS, SCENE_OPTIONS, CATEGORY_OPTIONS } from '@/lib/constants';
+import { WHO_GROUPS, SCENE_GROUPS, CATEGORY_GROUPS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { compressImage } from '@/lib/compressImage';
 import { apiFetch, reviewUrl, productsUrl, rakutenSearchUrl as rakutenSearchApiUrl, reviewsUrl } from '@/lib/api';
@@ -82,6 +82,10 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
 
   const [showInterruptModal, setShowInterruptModal] = useState(false);
   const [invalidFields, setInvalidFields] = useState<Set<string>>(new Set());
+  const [photoPickerIndex, setPhotoPickerIndex] = useState<number | null>(null);
+  const cameraInputRef0 = useRef<HTMLInputElement>(null);
+  const cameraInputRef1 = useRef<HTMLInputElement>(null);
+  const cameraInputRefs = [cameraInputRef0, cameraInputRef1];
   const DRAFT_KEY = 'review-draft';
 
   const saveDraft = () => {
@@ -647,7 +651,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
                 <div className="grid grid-cols-2 gap-3 max-w-xs">
                   {[0, 1].map((index) => (
                     <div key={index}>
-                      <div onClick={() => imagePreviews[index] ? setViewingIndex(index) : fileInputRefs[index].current?.click()}
+                      <div onClick={() => imagePreviews[index] ? setViewingIndex(index) : setPhotoPickerIndex(index)}
                         className={`aspect-square bg-background-soft border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-text-sub hover:bg-white hover:border-primary cursor-pointer transition-colors group overflow-hidden ${index === 0 && invalidFields.has('photo') ? 'border-primary/50 bg-primary/5' : 'border-border-light'}`}>
                         {compressing && !imagePreviews[index] ? (
                           <Spinner size={8} color="text-primary" />
@@ -664,6 +668,8 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
                         )}
                       </div>
                       <input ref={fileInputRefs[index]} type="file" accept="image/*"
+                        onChange={(e) => handleImageChange(e, index)} className="hidden" />
+                      <input ref={cameraInputRefs[index]} type="file" accept="image/*" capture="environment"
                         onChange={(e) => handleImageChange(e, index)} className="hidden" />
                       {imagePreviews[index] && (
                         <button onClick={() => removeImage(index)} className="mt-1 w-full text-xs text-text-sub hover:text-red-500 transition-colors text-center">削除</button>
@@ -765,10 +771,10 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
               {/* Accordion chips */}
               <div className="space-y-2 border-t border-border-light pt-4">
                 {([
-                  { key: 'relationship' as const, label: '具体的な関係性', options: WHO_OPTIONS },
-                  { key: 'scene' as const, label: 'シーン', options: SCENE_OPTIONS },
-                  { key: 'category' as const, label: 'カテゴリ', options: CATEGORY_OPTIONS },
-                ]).map(({ key, label, options }) => {
+                  { key: 'relationship' as const, label: '具体的な関係性', groups: WHO_GROUPS },
+                  { key: 'scene' as const, label: 'シーン', groups: SCENE_GROUPS },
+                  { key: 'category' as const, label: 'カテゴリ', groups: CATEGORY_GROUPS },
+                ]).map(({ key, label, groups }) => {
                   const isOpen = openAccordions.has(key);
                   const selected = formData[key];
                   return (
@@ -788,28 +794,33 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
                         </svg>
                       </button>
                       {isOpen && (
-                        <div className="px-4 py-3 bg-white border-t border-border-light">
+                        <div className="px-4 py-3 bg-white border-t border-border-light space-y-3">
                           {selected.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mb-3">
+                            <div className="flex flex-wrap gap-1.5">
                               {selected.map(v => (
                                 <span key={v} className="py-1 px-3 rounded-full text-xs font-bold border border-accent-strong bg-accent-strong text-white">{v}</span>
                               ))}
                             </div>
                           )}
-                          <div className="flex flex-wrap gap-2">
-                            {options.map(opt => {
-                              const isSel = selected.includes(opt);
-                              const isDis = !isSel && selected.length >= 3;
-                              return (
-                                <button key={opt} onClick={() => toggleArrayItem(key, opt)} disabled={isDis}
-                                  className={`py-1.5 px-3 rounded-full text-xs font-bold transition-all border ${
-                                    isSel ? 'border-accent-strong bg-accent-strong text-white' : 'border-border-light text-text-main bg-white hover:border-accent-strong/50 hover:text-accent-strong'
-                                  } ${isDis ? 'opacity-40 cursor-not-allowed' : ''}`}>
-                                  {opt}
-                                </button>
-                              );
-                            })}
-                          </div>
+                          {groups.map(group => (
+                            <div key={group.label}>
+                              <p className="text-[10px] font-bold text-text-sub uppercase tracking-wide mb-1.5">{group.label}</p>
+                              <div className="flex flex-wrap gap-2">
+                                {group.items.map(opt => {
+                                  const isSel = selected.includes(opt);
+                                  const isDis = !isSel && selected.length >= 3;
+                                  return (
+                                    <button key={opt} onClick={() => toggleArrayItem(key, opt)} disabled={isDis}
+                                      className={`py-1.5 px-3 rounded-full text-xs font-bold transition-all border ${
+                                        isSel ? 'border-accent-strong bg-accent-strong text-white' : 'border-border-light text-text-main bg-white hover:border-accent-strong/50 hover:text-accent-strong'
+                                      } ${isDis ? 'opacity-40 cursor-not-allowed' : ''}`}>
+                                      {opt}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -850,6 +861,44 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
 
         </div>
       </div>
+
+      {/* 写真選択アクションシート */}
+      {photoPickerIndex !== null && mounted && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-end justify-center"
+          onClick={() => setPhotoPickerIndex(null)}>
+          <div className="w-full max-w-sm mb-4 px-3" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-2xl overflow-hidden shadow-xl mb-2">
+              <div className="px-4 py-3 border-b border-border-light text-center">
+                <p className="text-xs text-text-sub">写真を追加</p>
+              </div>
+              <button
+                onClick={() => { cameraInputRefs[photoPickerIndex].current?.click(); setPhotoPickerIndex(null); }}
+                className="w-full flex items-center gap-3 px-4 py-4 hover:bg-background-soft transition-colors border-b border-border-light">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="text-primary" viewBox="0 0 16 16">
+                  <path d="M15 12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h1.172a3 3 0 0 0 2.12-.879l.83-.828A1 1 0 0 1 6.827 3h2.344a1 1 0 0 1 .707.293l.828.828A3 3 0 0 0 12.828 5H14a1 1 0 0 1 1 1zM2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 3.172 4z"/>
+                  <path d="M8 11a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5m0 1a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M3 6.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0"/>
+                </svg>
+                <span className="text-sm font-bold text-text-main">カメラで撮影</span>
+              </button>
+              <button
+                onClick={() => { fileInputRefs[photoPickerIndex].current?.click(); setPhotoPickerIndex(null); }}
+                className="w-full flex items-center gap-3 px-4 py-4 hover:bg-background-soft transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="text-primary" viewBox="0 0 16 16">
+                  <path d="M4.502 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3"/>
+                  <path d="M14.002 13a2 2 0 0 1-2 2h-10a2 2 0 0 1-2-2V5A2 2 0 0 1 2 3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-1.998 2M14 2H4a1 1 0 0 0-1 1h9.002a2 2 0 0 1 2 2v7A1 1 0 0 0 15 11V3a1 1 0 0 0-1-1M2.002 4a1 1 0 0 0-1 1v8l2.646-2.354a.5.5 0 0 1 .63-.062l2.66 1.773 3.71-3.71a.5.5 0 0 1 .577-.094l1.777 1.947V5a1 1 0 0 0-1-1z"/>
+                </svg>
+                <span className="text-sm font-bold text-text-main">フォトライブラリから選ぶ</span>
+              </button>
+            </div>
+            <button
+              onClick={() => setPhotoPickerIndex(null)}
+              className="w-full py-4 bg-white rounded-2xl shadow-xl text-sm font-bold text-text-main hover:bg-background-soft transition-colors">
+              キャンセル
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* 中断モーダル */}
       {showInterruptModal && (

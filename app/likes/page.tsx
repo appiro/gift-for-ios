@@ -63,9 +63,6 @@ export default function SavesPage() {
             </svg>
             保存したギフト
           </h1>
-          <p className="text-sm text-text-sub mt-2">
-            「欲しい！」「贈りたい！」を押した口コミが保存されます。
-          </p>
         </div>
 
         {/* Tabs */}

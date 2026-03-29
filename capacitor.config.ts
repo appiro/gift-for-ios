@@ -8,6 +8,9 @@ const config: CapacitorConfig = {
     url: 'https://giftfor.info',
     cleartext: false,
   },
+  ios: {
+    backgroundColor: '#ffffff',
+  },
 };
 
 export default config;
