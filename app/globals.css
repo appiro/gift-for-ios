@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+* { touch-action: manipulation; }
+
 .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 
