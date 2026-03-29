@@ -675,13 +675,12 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
 
               {/* Rakuten */}
               <div className="bg-background-soft rounded-2xl p-4 space-y-3">
-                <p className="text-sm font-bold text-text-main">楽天で商品を選択</p>
-                <p className="text-xs text-text-sub">該当する商品があれば選んでください。なければスキップできます。</p>
+                <p className="text-sm font-bold text-text-main">商品リンク <span className="text-xs font-normal text-text-sub">（任意）</span></p>
 
                 {formData.rakutenUrl && (
                   <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-xl">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#ef4444" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" /><path d="m10.97 4.97-.02.022-3.473 4.425-2.093-2.094a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05" /></svg>
-                    <span className="text-sm font-bold text-red-700 flex-1">楽天商品を選択済み</span>
+                    <span className="text-sm font-bold text-red-700 flex-1">商品を選択済み</span>
                     <button onClick={clearRakutenSelection} className="text-xs text-red-400 hover:text-red-600 font-bold">解除</button>
                   </div>
                 )}
@@ -703,7 +702,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
                 {!rakutenLoading && rakutenSearched && (
                   rakutenItems.length === 0 ? (
                     <div className="text-center py-4 text-text-sub text-sm border border-dashed border-border-light rounded-xl bg-white">
-                      楽天に該当商品が見つかりませんでした
+                      該当商品が見つかりませんでした
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
@@ -732,7 +731,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
                     className={`transition-transform ${showCustomUrl ? 'rotate-180' : ''}`}>
                     <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z" />
                   </svg>
-                  楽天以外のショップURLを入力する
+                  URLを直接入力する
                 </button>
                 {showCustomUrl && (
                   <div className="space-y-2">
