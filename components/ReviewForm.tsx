@@ -499,7 +499,7 @@ export default function ReviewForm({ mode, reviewId }: ReviewFormProps) {
                   <label className="block text-sm font-bold text-text-main mb-2">
                     ブランド名 <span className="text-xs font-normal text-text-sub ml-1">（任意）</span>
                   </label>
-                  <input type="text" placeholder="例）Jo Malone、無印良品" value={formData.brandName}
+                  <input type="text" placeholder="例）ブランド名（任意）" value={formData.brandName}
                     onChange={(e) => updateData('brandName', e.target.value)}
                     className="w-full bg-background-soft border border-border-light rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary focus:bg-white transition-colors" />
                 </div>
